@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-03T20:11:06.350Z"
+last_updated: "2026-04-04T00:00:00.000Z"
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 1
-  completed_plans: 0
+  completed_plans: 1
 ---
 
 # Signal — Project State
@@ -128,9 +128,9 @@ Initial planning and project bootstrap.
 
 ### Recently Completed
 
-- Project documentation organized in References/
-- FRAMEWORK_ROUTING_ARCHITECTURE.md created
-- PCP behavioral science foundation documented
+- Plan 01-core-intelligence/01 executed: ASR/S3 removed, feedback persistence fixed, LLM guard added, paste-transcript endpoint created, integration tests (157 passing), Streamlit refactored, evidence linking added, Dockerfile/docker-compose/CI-CD created
+- signalapp package committed to git (75 files)
+- 157 tests passing (138 unit + 19 integration)
 
 ### Blockers
 
@@ -142,20 +142,21 @@ None currently.
 
 | Slice | Status | Notes |
 |-------|--------|-------|
-| 1 | Not Started | Project setup |
-| 2 | Not Started | ASR + basic Call Review |
-| 3 | Not Started | Transcript paste |
-| 4 | Not Started | Base metrics + AI summary |
-| 5 | Not Started | Promptfoo + Langfuse |
-| 6 | Not Started | Pass 1 pipeline |
-| 7 | Not Started | First framework |
-| 8 | Not Started | Remaining frameworks |
+| 1 | Complete | Backend completion (pyproject.toml, feedback persistence, LLM guard) |
+| 2 | Complete | ASR/S3 removal (transcript-only mode) |
+| 3 | Complete | Paste-transcript API endpoint |
+| 4 | Complete | Pipeline integration tests (157 tests passing) |
+| 5 | Complete | Streamlit backend integration (signalapp imports, API calls) |
+| 6 | Complete | Evidence linking in Streamlit (clickable timestamps) |
+| 7 | Complete | Deployment: Dockerfile, docker-compose, CI/CD |
+| 8 | Not Started | First framework |
 | 9 | Not Started | Framework scaffolding |
 | 10 | Not Started | Developer settings |
 | 11 | Not Started | Re-analysis + export |
 | 12 | Not Started | Onboarding |
 | 13 | Not Started | Bulk upload |
 | 14 | Not Started | Dashboard |
+| 15 | Not Started | UI polish | |
 | 15 | Not Started | UI polish |
 
 ---

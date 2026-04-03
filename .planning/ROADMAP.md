@@ -50,6 +50,17 @@ Accept >60%      CRM >50%         Rep engage >40%    SOC 2 certified     5+ inte
 ### Phase Boundary
 Transcript paste as primary (and only) input. No audio upload, no ASR. FastAPI backend + Streamlit frontend. Behavioral analysis pipeline (Pass 1 + Routing + Framework execution + Insights).
 
+### Status
+**Plan 01:** ✅ COMPLETED (2026-04-04)
+- ASR/S3 modules removed
+- Feedback persistence fixed
+- LLM availability guard added
+- Paste-transcript endpoint implemented
+- Integration tests added (157 tests passing)
+- Streamlit refactored to use signalapp modules
+- Evidence linking and transcript sync added
+- Dockerfile + docker-compose + CI/CD added
+
 ### Deliverables (Phase 1 Scope)
 - **Input:** Transcript paste only (no audio)
 - **Behavioral layer:** 10 frameworks at production quality + 25 scaffolded placeholders
@@ -68,15 +79,15 @@ Transcript paste as primary (and only) input. No audio upload, no ASR. FastAPI b
 - REQ-08: Streamlit connected to FastAPI backend
 
 ### Build Slices (adapted for transcript-only)
-| Slice | What | Depends | Demoable |
-|-------|------|---------|----------|
-| 1 | Backend completion: pyproject.toml, fix feedback persistence, LLM guard | - | "Backend installs and runs" |
-| 2 | ASR/S3 removal | 1 | "No audio dependencies" |
-| 3 | Paste-transcript API endpoint | 1 | "POST transcript, pipeline runs" |
-| 4 | Pipeline integration tests | 2, 3 | "Tests pass" |
-| 5 | Streamlit backend integration | 4 | "Streamlit calls FastAPI" |
-| 6 | Evidence linking in Streamlit | 5 | "Click timestamp, highlight segment" |
-| 7 | Deployment: Dockerfile, docker-compose, CI/CD | 5 | "Docker image builds" |
+| Slice | What | Depends | Status |
+|-------|------|---------|--------|
+| 1 | Backend completion: pyproject.toml, fix feedback persistence, LLM guard | - | ✅ Done |
+| 2 | ASR/S3 removal | 1 | ✅ Done |
+| 3 | Paste-transcript API endpoint | 1 | ✅ Done |
+| 4 | Pipeline integration tests | 2, 3 | ✅ Done |
+| 5 | Streamlit backend integration | 4 | ✅ Done |
+| 6 | Evidence linking in Streamlit | 5 | ✅ Done |
+| 7 | Deployment: Dockerfile, docker-compose, CI/CD | 5 | ✅ Done |
 
 ### Critical Path
 `1 → 3 → 5 → 7`
