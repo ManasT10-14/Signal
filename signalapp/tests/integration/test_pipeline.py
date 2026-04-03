@@ -470,6 +470,100 @@ class TestDomainModels:
         assert evidence.speaker == "buyer"
 
 
+# ─── ExecuteGroups Node Tests ───────────────────────────────────────────────────
+
+
+class TestExecuteGroupsNode:
+    """Test framework group execution node."""
+
+    @pytest.mark.asyncio
+    async def test_execute_groups_returns_framework_results(self, sample_pipeline_state):
+        """execute_groups should return framework_results dict when LLM unavailable."""
+        from signalapp.pipeline.nodes.execute_groups import execute_groups_node
+        import os
+
+        # Ensure no LLM credentials
+        old_key = os.environ.pop("GEMINI_API_KEY", None)
+        old_proj = os.environ.pop("GOOGLE_CLOUD_PROJECT", None)
+        try:
+            result = await execute_groups_node(sample_pipeline_state)
+
+            assert "framework_results" in result
+            assert "framework_errors" in result
+            # Should have stub results for each active framework
+            assert len(result["framework_results"]) == len(sample_pipeline_state["active_frameworks"])
+        finally:
+            if old_key:
+                os.environ["GEMINI_API_KEY"] = old_key
+            if old_proj:
+                os.environ["GOOGLE_CLOUD_PROJECT"] = old_proj
+
+    @pytest.mark.asyncio
+    async def test_execute_groups_no_llm_returns_stub(self, sample_pipeline_state):
+        """Without LLM credentials, should return stub results."""
+        from signalapp.pipeline.nodes.execute_groups import execute_groups_node
+        import os
+
+        old_key = os.environ.pop("GEMINI_API_KEY", None)
+        old_proj = os.environ.pop("GOOGLE_CLOUD_PROJECT", None)
+        try:
+            result = await execute_groups_node(sample_pipeline_state)
+
+            # Should have stub results for each active framework
+            assert len(result["framework_results"]) == len(sample_pipeline_state["active_frameworks"])
+            assert len(result["framework_errors"]) == len(sample_pipeline_state["active_frameworks"])
+            # Each stub should have "LLM not available" error
+            for fw_id, error in result["framework_errors"].items():
+                assert "LLM" in error or "not configured" in error.lower()
+        finally:
+            if old_key:
+                os.environ["GEMINI_API_KEY"] = old_key
+            if old_proj:
+                os.environ["GOOGLE_CLOUD_PROJECT"] = old_proj
+
+
+# ─── Routing Table Completeness Tests ───────────────────────────────────────────
+
+
+class TestRoutingTableCompleteness:
+    """Test routing table covers all frameworks."""
+
+    def test_all_frameworks_have_routing_entry(self):
+        """Every framework 1-17 should have an entry."""
+        from signalapp.domain.routing import ROUTING_TABLE
+
+        for fw_id in range(1, 18):
+            assert fw_id in ROUTING_TABLE, f"Framework {fw_id} missing routing entry"
+
+    def test_pinned_frameworks_always_run(self):
+        """Frameworks 8, 9, 15 should always run regardless of call type."""
+        from signalapp.domain.routing import should_run_framework, Pass1GateSignals
+
+        signals = Pass1GateSignals(
+            has_competitor_mention=False,
+            has_pricing_discussion=False,
+            has_numeric_anchor=False,
+            has_objection_markers=False,
+            has_rep_questions=False,
+            has_close_language=False,
+            call_duration_minutes=30.0,
+        )
+
+        for call_type in ["discovery", "demo", "pricing", "negotiation", "close", "check_in", "other"]:
+            for fw_id in [8, 9, 15]:
+                decision = should_run_framework(fw_id, call_type, signals)
+                assert decision.decision == "RUN", f"FW-{fw_id} should RUN on {call_type}"
+
+    def test_routing_table_has_all_required_keys(self):
+        """Each routing entry should have required attributes."""
+        from signalapp.domain.routing import ROUTING_TABLE
+
+        required_attrs = {"mandatory_for", "blocked_for", "required_signal"}
+        for fw_id, entry in ROUTING_TABLE.items():
+            for attr in required_attrs:
+                assert hasattr(entry, attr), f"FW-{fw_id} missing attribute: {attr}"
+
+
 # ─── Run All Tests ─────────────────────────────────────────────────────────────
 
 
