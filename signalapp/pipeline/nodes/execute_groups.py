@@ -7,7 +7,11 @@ All results are collected into framework_results dict keyed by fw_id.
 from __future__ import annotations
 
 import asyncio
+import logging
+import os
 from signalapp.pipeline.state import PipelineState
+
+logger = logging.getLogger(__name__)
 
 # Mapping: fw_id (int) → (group_id, prompt_module_path, output_class_name)
 # prompt_module_path: dotted path to the module
@@ -46,6 +50,13 @@ GROUP_LLM_CONFIG_KEY: dict[str, str] = {
 }
 
 
+def _check_llm_available() -> bool:
+    """Check if LLM credentials are configured."""
+    gemini_key = os.environ.get("GEMINI_API_KEY", "")
+    gcp_project = os.environ.get("GOOGLE_CLOUD_PROJECT", "")
+    return bool(gemini_key or gcp_project)
+
+
 async def execute_groups_node(state: PipelineState) -> dict:
     """
     Execute all active framework groups in parallel.
@@ -59,6 +70,26 @@ async def execute_groups_node(state: PipelineState) -> dict:
     from signalapp.adapters.llm.gemini import GeminiProvider
     from signalapp.adapters.llm.base import LLMConfig
     from signalapp.domain.framework import FrameworkOutput
+
+    # LLM availability guard — fail fast if no credentials
+    if not _check_llm_available():
+        logger.warning(
+            "execute_groups_node: No LLM credentials configured. "
+            "Set GEMINI_API_KEY or GOOGLE_CLOUD_PROJECT environment variable. "
+            "Returning stub results."
+        )
+        active_frameworks = state.get("active_frameworks", [])
+        framework_results = {}
+        framework_errors = {}
+        for fw_id in active_frameworks:
+            framework_results[fw_id] = _stub_framework_output(
+                fw_id, "LLM credentials not configured"
+            ).model_dump()
+            framework_errors[fw_id] = "LLM not available"
+        return {
+            "framework_results": framework_results,
+            "framework_errors": framework_errors,
+        }
 
     config = get_config()
     provider = GeminiProvider()
