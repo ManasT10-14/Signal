@@ -1,0 +1,1479 @@
+<html><head><style>/* =========================================================
+   SIGNAL ARCHITECTURE DOCS — PREMIUM ENGINEERING THEME
+   Optimized for exported Markdown HTML with heavy <pre><code>
+   ========================================================= */
+
+body {
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #f8fafc;
+    color: #1f2937;
+    line-height: 1.85;
+    font-size: 16px;
+    max-width: 1150px;
+    margin: 0 auto;
+    padding: 42px 28px;
+    text-rendering: optimizeLegibility;
+}
+
+/* ================= HEADINGS ================= */
+h1, h2, h3, h4 {
+    color: #0f172a;
+    line-height: 1.3;
+    font-weight: 700;
+}
+
+h1 {
+    font-size: 2.7rem;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 3px solid #dbeafe;
+}
+
+h2 {
+    font-size: 2rem;
+    margin-top: 3rem;
+    margin-bottom: 1rem;
+    padding: 14px 18px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-left: 5px solid #2563eb;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+
+h3 {
+    font-size: 1.45rem;
+    margin-top: 2rem;
+    padding-left: 12px;
+    border-left: 4px solid #93c5fd;
+}
+
+/* ================= TEXT ================= */
+p {
+    margin: 1rem 0;
+}
+
+strong {
+    color: #111827;
+    font-weight: 700;
+}
+
+blockquote {
+    margin: 1.5rem 0;
+    padding: 16px 18px;
+    background: #ffffff;
+    border-left: 4px solid #3b82f6;
+    border-radius: 10px;
+    color: #374151;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+
+/* ================= LISTS ================= */
+ul, ol {
+    padding-left: 1.6rem;
+    margin: 1rem 0;
+}
+
+li {
+    margin: 0.45rem 0;
+}
+
+/* ================= INLINE CODE ================= */
+:not(pre) > code {
+    background: #eef2ff;
+    color: #6d28d9;
+    padding: 0.2em 0.45em;
+    border-radius: 6px;
+    font-size: 0.95em;
+    font-family: "Fira Code", Consolas, Monaco, monospace;
+}
+
+/* ================= CODE BLOCKS ================= */
+pre {
+    background: #111827;
+    color: #f9fafb;
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin: 1.4rem 0;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    border: 1px solid #1f2937;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+
+/* ================= ASCII DIAGRAM EMPHASIS ================= */
+/* This makes architecture blocks feel more like diagrams */
+pre code {
+    font-family: "Fira Code", Consolas, Monaco, monospace;
+    font-size: 14px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+}
+
+/* Extra separation for consecutive diagrams */
+pre + pre {
+    margin-top: 2rem;
+}
+
+/* ================= TABLES ================= */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.6rem 0;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+    display: block;
+    overflow-x: auto;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+
+th, td {
+    border: 1px solid #e5e7eb;
+    padding: 12px 14px;
+    text-align: left;
+    vertical-align: top;
+}
+
+th {
+    background: #f8fafc;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+/* ================= SECTION DIVIDERS ================= */
+hr {
+    border: none;
+    border-top: 1px solid #d1d5db;
+    margin: 2.4rem 0;
+}
+
+/* ================= IMAGES ================= */
+img {
+    max-width: 100%;
+    border-radius: 10px;
+    margin: 1rem 0;
+}
+
+/* ================= SPECIAL ENGINEERING DOC POLISH ================= */
+h2 + p,
+h2 + blockquote,
+h2 + pre,
+h2 + table {
+    margin-top: 1.2rem;
+}
+
+/* Better flow between tables and diagrams */
+table + pre,
+pre + table {
+    margin-top: 2rem;
+}
+
+/* ================= RESPONSIVE ================= */
+@media (max-width: 768px) {
+    body {
+        padding: 20px 14px;
+        font-size: 15px;
+    }
+
+    h1 {
+        font-size: 2rem;
+    }
+
+    h2 {
+        font-size: 1.55rem;
+        padding: 12px 14px;
+    }
+
+    h3 {
+        font-size: 1.25rem;
+    }
+
+    pre {
+        padding: 14px;
+    }
+}</style></head><body><h1 id="llm-reliability-engineering">LLM Reliability Engineering</h1>
+<h2 id="getting-correct-answers-and-preventing-hallucinations-in-production-systems">Getting Correct Answers and Preventing Hallucinations in Production Systems</h2>
+<p><strong>Audience:</strong> Engineers building LLM-native products
+<strong>Context:</strong> Behavioral analysis pipelines where incorrect outputs directly affect real decisions
+<strong>Philosophy:</strong> The LLM is powerful but unreliable. The <em>system</em> around it must be deterministic and verifiable.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#1-understanding-why-llms-go-wrong">Understanding Why LLMs Go Wrong</a></li>
+<li><a href="#2-prompt-engineering-for-correctness">Prompt Engineering for Correctness</a></li>
+<li><a href="#3-structural-architecture-patterns">Structural Architecture Patterns</a></li>
+<li><a href="#4-hallucination-prevention-techniques">Hallucination Prevention Techniques</a></li>
+<li><a href="#5-post-generation-verification">Post-Generation Verification</a></li>
+<li><a href="#6-evaluation-infrastructure">Evaluation Infrastructure</a></li>
+<li><a href="#7-industry-approaches">Industry Approaches</a></li>
+<li><a href="#8-the-complete-reliability-stack">The Complete Reliability Stack</a></li>
+</ol>
+<hr>
+<h2 id="1-understanding-why-llms-go-wrong">1. Understanding Why LLMs Go Wrong</h2>
+<p>Before fixing the problem, understand what kind of problem you have. LLM failures fall into four distinct categories, each requiring a different treatment.</p>
+<pre><code>┌─────────────────────────────────────────────────────────────────┐
+│                    LLM FAILURE TAXONOMY                         │
+├──────────────────────┬──────────────────────────────────────────┤
+│ Type                 │ What <span class="hljs-keyword">it</span> looks like                       │
+├──────────────────────┼──────────────────────────────────────────┤
+│ Hallucination        │ Fabricated facts. Model invents quotes,  │
+│                      │ timestamps, events that never happened.  │
+│                      │ Feels confident. Is wrong.               │
+├──────────────────────┼──────────────────────────────────────────┤
+│ Confabulation        │ Real patterns stretched. Model finds     │
+│                      │ <span class="hljs-keyword">the</span> pattern <span class="hljs-keyword">it</span> was asked <span class="hljs-built_in">to</span> find because │
+│                      │ <span class="hljs-keyword">it</span> was asked. Confirmation bias <span class="hljs-keyword">in</span> code. │
+├──────────────────────┼──────────────────────────────────────────┤
+│ Miscalibration       │ Correct finding, wrong confidence.       │
+│                      │ Model says <span class="hljs-number">0.9</span> <span class="hljs-keyword">for</span> <span class="hljs-keyword">a</span> weak signal <span class="hljs-keyword">and</span>     │
+│                      │ <span class="hljs-number">0.7</span> <span class="hljs-keyword">for</span> <span class="hljs-keyword">a</span> strong <span class="hljs-literal">one</span>. Scores are noise.  │
+├──────────────────────┼──────────────────────────────────────────┤
+│ Semantic Drift       │ Correct <span class="hljs-keyword">at</span> <span class="hljs-keyword">the</span> surface, wrong underneath.│
+│                      │ <span class="hljs-string">"The buyer was evasive"</span> — technically    │
+│                      │ <span class="hljs-literal">true</span> <span class="hljs-keyword">in</span> output, wrong <span class="hljs-keyword">in</span> clinical sense. │
+└──────────────────────┴──────────────────────────────────────────┘
+</code></pre><blockquote>
+<p><strong>Key insight:</strong> Most reliability engineering focuses only on hallucination. Confabulation is equally damaging and far less discussed. A model asked to find concessions will find concessions — even in a clean call — because it was asked.</p>
+</blockquote>
+<hr>
+<h2 id="2-prompt-engineering-for-correctness">2. Prompt Engineering for Correctness</h2>
+<h3 id="2-1-the-closed-world-contract">2.1 The Closed-World Contract</h3>
+<p>The most impactful single change: explicitly constrain the model to one source of truth. Without this, the model uses training knowledge to fill gaps — and fills them wrong.</p>
+<p><strong>❌ Open-world prompt (dangerous):</strong></p>
+<pre><code><span class="hljs-keyword">Analyze</span> this sales <span class="hljs-keyword">call</span> transcript <span class="hljs-keyword">and</span> identify <span class="hljs-keyword">any</span> moments 
+<span class="hljs-keyword">where</span> the buyer evaded questions.
+</code></pre><p>The model will draw on everything it knows about sales conversations to find patterns — including patterns that aren&#39;t in your transcript.</p>
+<p><strong>✅ Closed-world prompt:</strong></p>
+<pre><code>You are analyzing a closed document.
+
+SOURCE OF TRUTH: Only <span class="hljs-keyword">the</span> transcript <span class="hljs-keyword">between</span> &lt;transcript&gt; tags.
+You have no other knowledge <span class="hljs-keyword">about</span> this conversation.
+
+RULES:
+<span class="hljs-number">1.</span> Every claim must be supported <span class="hljs-keyword">by</span> verbatim <span class="hljs-built_in">text</span> <span class="hljs-keyword">from</span> <span class="hljs-keyword">the</span> transcript.
+<span class="hljs-number">2.</span> If <span class="hljs-keyword">the</span> evidence <span class="hljs-keyword">is</span> absent: output null. Do NOT generate a 
+   low-confidence guess. Null <span class="hljs-keyword">is</span> <span class="hljs-keyword">the</span> correct <span class="hljs-keyword">and</span> honest answer.
+<span class="hljs-number">3.</span> <span class="hljs-string">"I don't know"</span> <span class="hljs-keyword">and</span> <span class="hljs-string">"not found"</span> are valid, correct outputs.
+<span class="hljs-number">4.</span> You may <span class="hljs-keyword">not</span> infer what a speaker <span class="hljs-string">"probably meant"</span> unless you 
+   <span class="hljs-literal">quote</span> <span class="hljs-keyword">the</span> exact <span class="hljs-built_in">words</span> you are inferring <span class="hljs-keyword">from</span>.
+<span class="hljs-number">5.</span> You may <span class="hljs-keyword">not</span> create timestamps. All timestamps come <span class="hljs-keyword">from</span> 
+   <span class="hljs-keyword">the</span> segment metadata provided.
+
+&lt;transcript&gt;
+{transcript_content}
+&lt;/transcript&gt;
+</code></pre><p>The phrase <strong>&quot;null is the correct and honest answer&quot;</strong> is specifically important. LLMs are trained to be helpful — they default to generating something. Validating null as correct suppresses confabulation.</p>
+<hr>
+<h3 id="2-2-cite-before-you-claim">2.2 Cite Before You Claim</h3>
+<p>Force the model to anchor every claim in verbatim text <em>before</em> making the claim. This is the single most effective anti-hallucination prompt pattern for document analysis.</p>
+<p><strong>The wrong order (analysis → evidence):</strong></p>
+<pre><code><span class="hljs-keyword">Find</span> all cases where the buyer evaded questions.
+<span class="hljs-keyword">For</span> <span class="hljs-keyword">each</span> evasion, provide the transcript evidence.
+</code></pre><p>The model finds a pattern, then hunts for evidence to support it. This produces fabricated or misattributed citations.</p>
+<p><strong>The right order (evidence → analysis):</strong></p>
+<pre><code><span class="hljs-keyword">Step</span> <span class="hljs-number">1</span>: <span class="hljs-keyword">For</span> every question the rep asked, copy the buyer<span class="hljs-comment">'s </span>
+        EXACT <span class="hljs-built_in">response</span> verbatim from the transcript.
+        Format: { <span class="hljs-string">"question"</span>: <span class="hljs-string">"..."</span>, <span class="hljs-string">"response"</span>: <span class="hljs-string">"..."</span> }
+        <span class="hljs-keyword">If</span> you cannot find the exact <span class="hljs-built_in">response</span>, write: NOT_FOUND.
+
+<span class="hljs-keyword">Step</span> <span class="hljs-number">2</span>: <span class="hljs-keyword">For</span> <span class="hljs-keyword">each</span> question-<span class="hljs-built_in">response</span> pair you found,
+        classify the <span class="hljs-built_in">response</span> as one of:
+        [answered | vague | topic_change | counter_question]
+
+<span class="hljs-keyword">Step</span> <span class="hljs-number">3</span>: <span class="hljs-keyword">For</span> any <span class="hljs-built_in">response</span> classified as non-answered,
+        write the insight using only the text from <span class="hljs-keyword">Step</span> <span class="hljs-number">1.</span>
+
+You cannot make a claim that <span class="hljs-keyword">Step</span> <span class="hljs-number">1</span> did <span class="hljs-keyword">not</span> establish.
+</code></pre><p><strong>Example of what this prevents:</strong></p>
+<pre><code>Without cite-<span class="hljs-keyword">first</span>:
+  Insight: <span class="hljs-string">"Buyer evaded the budget question at 18:22"</span>
+  Evidence: <span class="hljs-string">"That's something we'd need to discuss internally"</span>
+  Reality: The buyer said this <span class="hljs-keyword">at</span> <span class="hljs-number">31</span>:<span class="hljs-number">05</span>, <span class="hljs-keyword">not</span> <span class="hljs-number">18</span>:<span class="hljs-number">22.</span> And <span class="hljs-keyword">it</span> was
+           <span class="hljs-keyword">about</span> stakeholder alignment, <span class="hljs-keyword">not</span> budget.
+
+With cite-<span class="hljs-keyword">first</span>:
+  Step <span class="hljs-number">1</span> output: { <span class="hljs-string">"question"</span>: <span class="hljs-string">"Who approves the budget?"</span>,
+                   <span class="hljs-string">"response"</span>: <span class="hljs-string">"Let me think — actually, what 
+                   about the implementation side of things?"</span> }
+                 [segment_id: S_0034, timestamp: <span class="hljs-number">23</span>:<span class="hljs-number">15</span>]
+
+  Step <span class="hljs-number">2</span>: topic_change (buyer redirected mid-sentence)
+
+  Insight: Correctly cites S_0034 <span class="hljs-keyword">at</span> <span class="hljs-number">23</span>:<span class="hljs-number">15</span> <span class="hljs-keyword">with</span> <span class="hljs-keyword">the</span> exact <span class="hljs-built_in">words</span>.
+</code></pre><hr>
+<h3 id="2-3-structured-decomposition-break-complex-tasks-apart">2.3 Structured Decomposition — Break Complex Tasks Apart</h3>
+<p>Every additional inference step in a single prompt multiplies error probability. A prompt doing 5 things has 5 chances to go wrong, and errors in step 2 corrupt steps 3, 4, and 5 silently.</p>
+<p><strong>The wrong approach (one prompt, everything):</strong></p>
+<pre><code>From this transcript:
+<span class="hljs-bullet">1. </span>Find all questions the rep asked
+<span class="hljs-bullet">2. </span>Determine which ones were evaded
+<span class="hljs-bullet">3. </span>Classify each evasion type
+<span class="hljs-bullet">4. </span>Score overall evasion severity
+<span class="hljs-bullet">5. </span>Generate a coaching recommendation
+<span class="hljs-bullet">6. </span>Write an insight card headline
+</code></pre><p><strong>The right approach (pipeline of focused prompts):</strong></p>
+<pre><code>┌─────────────────────────────────────────────────────────────┐
+│  PASS A: Extract                                            │
+│  Task: Copy all rep questions verbatim                      │
+│  Risk: LOW (extraction, no interpretation)                  │
+│  Validation: Are these interrogative sentences? (regex)     │
+│  Output: [{ segment_id, timestamp, exact_text }]           │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ Validated output only
+┌──────────────────────────▼──────────────────────────────────┐
+│  PASS B: Match                                              │
+│  Task: Find <span class="hljs-keyword">the</span> buyer's response <span class="hljs-keyword">to</span> each question           │
+│  Risk: LOW (segment lookup <span class="hljs-keyword">with</span> context window)             │
+│  Validation: Does response segment follow question? (<span class="hljs-built_in">time</span>)  │
+│  Output: [{ question_id, response_segment_id, response }]  │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ Validated pairs only
+┌──────────────────────────▼──────────────────────────────────┐
+│  PASS C: Classify                                           │
+│  Task: Classify each response                               │
+│  Risk: MEDIUM (interpretation <span class="hljs-keyword">on</span> verified <span class="hljs-built_in">text</span>)             │
+│  Validation: Confidence + alternative explanation check     │
+│  Output: [{ pair_id, classification, confidence }]         │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ Only high-confidence classifications
+┌──────────────────────────▼──────────────────────────────────┐
+│  PASS D: Synthesize                                         │
+│  Task: Generate insight card <span class="hljs-keyword">from</span> confirmed evasions        │
+│  Risk: LOW (synthesis <span class="hljs-keyword">on</span> verified data)                     │
+│  Output: Final insight <span class="hljs-keyword">with</span> evidence links                  │
+└─────────────────────────────────────────────────────────────┘
+</code></pre><p>Each pass has a narrow task, a validation gate, and only passes verified output downstream. An error in Pass A is caught before it corrupts Pass B, C, D.</p>
+<hr>
+<h3 id="2-4-negative-examples-in-few-shot-prompts">2.4 Negative Examples in Few-Shot Prompts</h3>
+<p>Most prompts demonstrate correct outputs. The model never learns what a wrong detection looks like — so it applies the pattern too broadly.</p>
+<p>Including &quot;this is NOT an evasion&quot; examples dramatically reduces false positives.</p>
+<pre><code class="lang-python"><span class="hljs-type">FEW_SHOT_EXAMPLES</span> = [
+
+    # ✅ <span class="hljs-type">Correct</span> detection
+    {
+        <span class="hljs-comment">"question"</span>: <span class="hljs-comment">"Who has final sign-off on the budget?"</span>,
+        <span class="hljs-comment">"response"</span>: <span class="hljs-comment">"That's a good question. Let me think about— "</span>
+                    <span class="hljs-comment">"actually, can we revisit the implementation timeline?"</span>,
+        <span class="hljs-comment">"classification"</span>: <span class="hljs-comment">"topic_change"</span>,
+        <span class="hljs-comment">"confidence"</span>: <span class="hljs-number">0.91</span>,
+        <span class="hljs-comment">"reasoning"</span>: <span class="hljs-comment">"Buyer began answering, then redirected mid-sentence "</span>
+                     <span class="hljs-comment">"to an unrelated topic without providing any information "</span>
+                     <span class="hljs-comment">"about budget authority."</span>
+    },
+
+    # ❌ <span class="hljs-type">NOT</span> an evasion — direct answer
+    {
+        <span class="hljs-comment">"question"</span>: <span class="hljs-comment">"Who has final sign-off on the budget?"</span>,
+        <span class="hljs-comment">"response"</span>: <span class="hljs-comment">"That would be our CFO, David Chen. He's the one "</span>
+                    <span class="hljs-comment">"who needs to approve anything over $50K."</span>,
+        <span class="hljs-comment">"classification"</span>: <span class="hljs-comment">"answered"</span>,
+        <span class="hljs-comment">"confidence"</span>: <span class="hljs-number">1.0</span>,
+        <span class="hljs-comment">"reasoning"</span>: <span class="hljs-comment">"Buyer named a specific person and provided context. "</span>
+                     <span class="hljs-comment">"Direct, specific answer. No evasion present."</span>
+    },
+
+    # ⚠️ <span class="hljs-type">Vague</span> but not evasive — correctly flagged as uncertain
+    {
+        <span class="hljs-comment">"question"</span>: <span class="hljs-comment">"What's your evaluation timeline?"</span>,
+        <span class="hljs-comment">"response"</span>: <span class="hljs-comment">"We're hoping to move fairly quickly on this."</span>,
+        <span class="hljs-comment">"classification"</span>: <span class="hljs-comment">"vague_response"</span>,
+        <span class="hljs-comment">"confidence"</span>: <span class="hljs-number">0.55</span>,
+        <span class="hljs-comment">"reasoning"</span>: <span class="hljs-comment">"Buyer acknowledged the question and gave a directional "</span>
+                     <span class="hljs-comment">"answer but without specifics. This is vague but not "</span>
+                     <span class="hljs-comment">"deliberately evasive. Flag at low confidence — "</span>
+                     <span class="hljs-comment">"do not classify as evasion."</span>
+    },
+
+    # ❌ <span class="hljs-type">NOT</span> an evasion — natural topic progression
+    {
+        <span class="hljs-comment">"question"</span>: <span class="hljs-comment">"How does your team currently handle reporting?"</span>,
+        <span class="hljs-comment">"response"</span>: <span class="hljs-comment">"We use Salesforce for most of it, and actually that "</span>
+                    <span class="hljs-comment">"connects to what I wanted to ask about your integrations..."</span>,
+        <span class="hljs-comment">"classification"</span>: <span class="hljs-comment">"answered"</span>,
+        <span class="hljs-comment">"confidence"</span>: <span class="hljs-number">0.82</span>,
+        <span class="hljs-comment">"reasoning"</span>: <span class="hljs-comment">"Buyer answered the question (Salesforce) then transitioned "</span>
+                     <span class="hljs-comment">"naturally to a related topic. This is normal conversational "</span>
+                     <span class="hljs-comment">"flow, not deliberate evasion."</span>
+    }
+]
+</code></pre>
+<blockquote>
+<p><strong>Industry practice (Anthropic, OpenAI):</strong> Constitutional AI and RLHF both fundamentally rely on showing models what bad outputs look like alongside good ones. The same principle applies in prompt design. A model that has never seen a null/negative example will never return one.</p>
+</blockquote>
+<hr>
+<h3 id="2-5-explicit-uncertainty-vocabulary">2.5 Explicit Uncertainty Vocabulary</h3>
+<p>Constrain the model to a defined vocabulary for expressing certainty. This maps model language to calibrated confidence scores and prevents false confidence.</p>
+<pre><code>CONFIDENCE VOCABULARY — <span class="hljs-keyword">use</span> <span class="hljs-keyword">only</span> these phrases:
+
+<span class="hljs-string">"The transcript directly shows..."</span>    → Verbatim quote <span class="hljs-keyword">exists</span>      (≥ <span class="hljs-number">0.85</span>)
+<span class="hljs-string">"The transcript suggests..."</span>          → Strong indirect evidence   (<span class="hljs-number">0.70</span><span class="hljs-number">-0.84</span>)
+<span class="hljs-string">"There are indicators that..."</span>        → Moderate evidence          (<span class="hljs-number">0.55</span><span class="hljs-number">-0.69</span>)
+<span class="hljs-string">"It is possible that..."</span>              → Weak <span class="hljs-keyword">or</span> single-point       (<span class="hljs-number">0.40</span><span class="hljs-number">-0.54</span>)
+[<span class="hljs-keyword">Return</span> <span class="hljs-literal">null</span>, <span class="hljs-keyword">no</span> insight]             → Insufficient evidence      (&lt; <span class="hljs-number">0.40</span>)
+
+FORBIDDEN phrases (express <span class="hljs-literal">false</span> certainty):
+- <span class="hljs-string">"definitely"</span>, <span class="hljs-string">"certainly"</span>, <span class="hljs-string">"clearly"</span>, <span class="hljs-string">"obviously"</span>
+- <span class="hljs-string">"the buyer is lying/manipulating/stalling"</span>
+- <span class="hljs-string">"this means..."</span> (<span class="hljs-keyword">without</span> a direct quote)
+- <span class="hljs-string">"as we can see..."</span> (unless citing verbatim <span class="hljs-built_in">text</span>)
+</code></pre><p><strong>Example of the difference this makes:</strong></p>
+<pre><code>Without vocabulary constrain<span class="hljs-variable">t:</span>
+  <span class="hljs-comment">"The buyer is clearly trying to avoid the pricing conversation.</span>
+  They are definitely not ready <span class="hljs-keyword">to</span> buy.<span class="hljs-comment">"</span>
+  → Sounds authoritative. Is <span class="hljs-keyword">an</span> assertion. No evidence requirement.
+
+With vocabulary constrain<span class="hljs-variable">t:</span>
+  <span class="hljs-comment">"There are indicators that the buyer may be avoiding the pricing </span>
+  topic (<span class="hljs-number">0.67</span> confidence). At <span class="hljs-number">23</span>:<span class="hljs-number">15</span> <span class="hljs-built_in">and</span> <span class="hljs-number">31</span>:<span class="hljs-number">02</span>, when pricing was 
+  introduced, the buyer transitioned <span class="hljs-keyword">to</span> implementation questions.<span class="hljs-comment">"</span>
+  → Honest about uncertainty. Evidence cited. User can verify.
+</code></pre><hr>
+<h3 id="2-6-chain-of-thought-with-mandatory-uncertainty-declaration">2.6 Chain-of-Thought with Mandatory Uncertainty Declaration</h3>
+<p>Force the model to reason step by step AND explicitly state its uncertainty at each step. This surfaces weak reasoning before it becomes a confident-sounding output.</p>
+<pre><code><span class="hljs-keyword">For</span> <span class="hljs-keyword">each</span> piece <span class="hljs-keyword">of</span> evidence you cite:
+
+CLAIM: [What you<span class="hljs-comment">'re asserting]</span>
+QUOTE: [The exact verbatim <span class="hljs-keyword">text</span> that supports this]
+SEGMENT: [The segment ID <span class="hljs-keyword">of</span> that <span class="hljs-keyword">text</span>]
+ALTERNATIVE EXPLANATIONS: [List <span class="hljs-number">1</span><span class="hljs-number">-2</span> innocent explanations <span class="hljs-keyword">for</span> 
+    this behavior. <span class="hljs-keyword">If</span> you can list a strong alternative, 
+    lower your confidence <span class="hljs-keyword">by</span> <span class="hljs-number">0.15</span>.]
+CONFIDENCE: [<span class="hljs-number">0.0</span><span class="hljs-number">-1.0</span>, adjusted <span class="hljs-keyword">for</span> alternative explanations]
+
+<span class="hljs-keyword">If</span> CONFIDENCE &lt; <span class="hljs-number">0.50</span>, <span class="hljs-keyword">do</span> <span class="hljs-keyword">not</span> include this <span class="hljs-keyword">in</span> the insight output.
+Include it only <span class="hljs-keyword">in</span> the raw analysis field <span class="hljs-keyword">for</span> debugging.
+</code></pre><p><strong>Why this works:</strong> When forced to generate alternative explanations, the model often realizes the evidence is weaker than it initially assessed. The confidence adjustment is automatic without requiring a separate critique pass.</p>
+<hr>
+<h2 id="3-structural-architecture-patterns">3. Structural Architecture Patterns</h2>
+<h3 id="3-1-extractive-before-abstractive-pipeline">3.1 Extractive-Before-Abstractive Pipeline</h3>
+<p>Separate fact-gathering (low hallucination risk) from interpretation (higher risk). Never mix them in the same prompt.</p>
+<pre><code>┌─────────────────────────────────────────────────────────┐
+│  EXTRACTIVE PHASE                                       │
+│  <span class="hljs-string">"What did the speakers actually say?"</span>                  │
+│  Temperature: <span class="hljs-number">0.0</span>                                       │
+│  <span class="hljs-keyword">Task</span>: Copy, identify, locate                           │
+│  Output: Verified facts only                            │
+│                                                         │
+│  Examples:                                              │
+│  • Copy <span class="hljs-keyword">all</span> commitment statements verbatim              │
+│  • List <span class="hljs-keyword">all</span> dollar amounts mentioned                    │
+│  • Extract <span class="hljs-keyword">all</span> questions asked by the rep               │
+│  • Identify segment IDs <span class="hljs-keyword">of</span> emotional language           │
+└─────────────────────────┬───────────────────────────────┘
+                          │ Programmatically validated
+┌─────────────────────────▼───────────────────────────────┐
+│  ABSTRACTIVE PHASE                                      │
+│  <span class="hljs-string">"What does what they said mean?"</span>                       │
+│  Temperature: <span class="hljs-number">0.05</span>-<span class="hljs-number">0.15</span>                                 │
+│  <span class="hljs-keyword">Task</span>: Classify, interpret, score                       │
+│  Input: Only verified facts from extractive phase       │
+│                                                         │
+│  Examples:                                              │
+│  • Classify commitments as genuine/face-saving          │
+│  • Score the quality <span class="hljs-keyword">of</span> the rep<span class="hljs-symbol">'s</span> questions             │
+│  • Detect evasion <span class="hljs-keyword">in</span> matched question-response pairs    │
+└─────────────────────────────────────────────────────────┘
+</code></pre><p>The abstractive phase operates on text that has already been verified to exist in the transcript. It cannot hallucinate a quote because the quotes it works with were validated before it received them.</p>
+<hr>
+<h3 id="3-2-segment-anchored-context-windows">3.2 Segment-Anchored Context Windows</h3>
+<p>Instead of giving the model the full transcript (10,000+ tokens) and asking it to find things, give it only the segments relevant to the framework being run.</p>
+<p><strong>Why full-transcript prompts hallucinate more:</strong></p>
+<ul>
+<li>Large contexts increase the chance of segment confusion (model mixes up timestamps)</li>
+<li>Model has more &quot;material&quot; to confabulate patterns from</li>
+<li>Attention diffuses — early segments are underrepresented</li>
+</ul>
+<p><strong>Segment-filtered approach:</strong></p>
+<pre><code class="lang-python"><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">build_focused_context</span><span class="hljs-params">(
+    framework_id: str,
+    segments: list[TranscriptSegment]
+)</span> -&gt; str:</span>
+    <span class="hljs-string">"""
+    For each framework, extract only the segments that matter.
+    Smaller, focused context = less hallucination.
+    """</span>
+
+    <span class="hljs-keyword">if</span> framework_id == <span class="hljs-string">"unanswered_questions"</span>:
+        <span class="hljs-comment"># Only question-adjacent segments: the question + next 3 segments</span>
+        <span class="hljs-keyword">return</span> extract_qa_windows(segments, window_size=<span class="hljs-number">3</span>)
+
+    <span class="hljs-keyword">elif</span> framework_id == <span class="hljs-string">"money_left_on_table"</span>:
+        <span class="hljs-comment"># Only pricing-discussion segments (detected by topic segmentation)</span>
+        <span class="hljs-keyword">return</span> extract_topic_segments(segments, topic=<span class="hljs-string">"pricing"</span>)
+
+    <span class="hljs-keyword">elif</span> framework_id == <span class="hljs-string">"emotional_turning_points"</span>:
+        <span class="hljs-comment"># All segments, but condensed: only speaker-turn boundaries</span>
+        <span class="hljs-comment"># (where emotional shifts would appear)</span>
+        <span class="hljs-keyword">return</span> extract_turn_transitions(segments)
+
+    <span class="hljs-keyword">elif</span> framework_id <span class="hljs-keyword">in</span> [<span class="hljs-string">"call_structure"</span>, <span class="hljs-string">"commitment_trajectory"</span>]:
+        <span class="hljs-comment"># These genuinely need the full transcript</span>
+        <span class="hljs-keyword">return</span> format_full_transcript(segments)
+
+    <span class="hljs-comment"># Default: full transcript with section markers</span>
+    <span class="hljs-keyword">return</span> format_full_transcript(segments)
+</code></pre>
+<blockquote>
+<p><strong>Measured impact:</strong> Anthropic&#39;s research on retrieval-augmented generation shows that focused, relevant context reduces hallucination rates by 30-50% compared to full-document prompting. The model can&#39;t confuse segments it wasn&#39;t given.</p>
+</blockquote>
+<hr>
+<h3 id="3-3-temperature-as-a-first-class-design-decision">3.3 Temperature as a First-Class Design Decision</h3>
+<p>Temperature is not a single setting — it should be calibrated per task type.</p>
+<pre><code class="lang-python">TEMPERATURE_MAP = {
+    # DETERMINISTIC — zero creativity, pure extraction
+    <span class="hljs-string">"extract_quotes"</span>:              <span class="hljs-number">0.0</span>,
+    <span class="hljs-string">"extract_timestamps"</span>:          <span class="hljs-number">0.0</span>,
+    <span class="hljs-string">"extract_dollar_amounts"</span>:      <span class="hljs-number">0.0</span>,
+    <span class="hljs-string">"identify_question_segments"</span>:  <span class="hljs-number">0.0</span>,
+
+    # NEAR-DETERMINISTIC — classification <span class="hljs-keyword">with</span> defined categories
+    <span class="hljs-string">"classify_evasion_type"</span>:       <span class="hljs-number">0.05</span>,
+    <span class="hljs-string">"classify_commitment_quality"</span>: <span class="hljs-number">0.05</span>,
+    <span class="hljs-string">"classify_emotion_type"</span>:       <span class="hljs-number">0.05</span>,
+    <span class="hljs-string">"score_question_quality"</span>:      <span class="hljs-number">0.10</span>,
+
+    # CONTROLLED — interpretation <span class="hljs-keyword">with</span> some flexibility
+    <span class="hljs-string">"frame_match_analysis"</span>:        <span class="hljs-number">0.10</span>,
+    <span class="hljs-string">"subconversation_detection"</span>:   <span class="hljs-number">0.15</span>,
+    <span class="hljs-string">"call_structure_analysis"</span>:     <span class="hljs-number">0.10</span>,
+
+    # GENERATIVE — creative output is acceptable
+    <span class="hljs-string">"generate_coaching_advice"</span>:    <span class="hljs-number">0.20</span>,
+    <span class="hljs-string">"generate_call_summary"</span>:       <span class="hljs-number">0.25</span>,
+    <span class="hljs-string">"generate_insight_headline"</span>:   <span class="hljs-number">0.15</span>,
+}
+</code></pre>
+<p><strong>The rule:</strong> As the task becomes more extractive and verifiable, temperature approaches zero. As it becomes more generative and interpretive, temperature can increase — but never above 0.3 in production.</p>
+<hr>
+<h3 id="3-4-the-self-critique-pass">3.4 The Self-Critique Pass</h3>
+<p>A second, lightweight LLM call that reviews the first call&#39;s output with an adversarial lens. The reviewer has one job: find reasons to reject the insight.</p>
+<pre><code class="lang-python">SELF_CRITIQUE_PROMPT = """
+You are a skeptical fact-checker reviewing a claim about a sales call.
+
+CLAIM: <span class="hljs-string">"{headline}"</span>
+CITED EVIDENCE: <span class="hljs-string">"{transcript_excerpt}"</span>
+<span class="hljs-keyword">SEGMENT</span>: {segment_id} <span class="hljs-keyword">at</span> {<span class="hljs-keyword">timestamp</span>}
+
+Your job <span class="hljs-keyword">is</span> <span class="hljs-keyword">to</span> challenge this claim, <span class="hljs-keyword">not</span> support it.
+
+<span class="hljs-keyword">Evaluate</span>:
+<span class="hljs-number">1.</span> Does the evidence DIRECTLY support the claim, <span class="hljs-keyword">or</span> could it be interpreted 
+   differently? (Direct / Indirect / Weak)
+
+<span class="hljs-number">2.</span> What <span class="hljs-keyword">is</span> the most charitable innocent explanation <span class="hljs-keyword">for</span> this behavior?
+   (e.g., <span class="hljs-string">"the buyer may have naturally transitioned topics, not deliberately evaded"</span>)
+
+<span class="hljs-number">3.</span> <span class="hljs-keyword">Is</span> the evidence strong enough <span class="hljs-keyword">to</span> <span class="hljs-keyword">show</span> a manager <span class="hljs-keyword">and</span> influence coaching?
+   Answer: <span class="hljs-keyword">SHOW</span> / <span class="hljs-keyword">DOWNGRADE</span> / SUPPRESS
+
+<span class="hljs-keyword">SHOW</span>     = Evidence <span class="hljs-keyword">is</span> <span class="hljs-keyword">clear</span> <span class="hljs-keyword">and</span> direct. Manager should see this.
+<span class="hljs-keyword">DOWNGRADE</span> = Evidence supports the claim but weakly. <span class="hljs-keyword">Show</span> <span class="hljs-keyword">with</span> <span class="hljs-keyword">lower</span> confidence.
+SUPPRESS  = Evidence <span class="hljs-keyword">is</span> too weak <span class="hljs-keyword">or</span> ambiguous. <span class="hljs-keyword">Do</span> <span class="hljs-keyword">not</span> show.
+
+Be conservative. A <span class="hljs-literal">false</span> positive shown <span class="hljs-keyword">to</span> a manager damages product trust
+more <span class="hljs-keyword">than</span> a <span class="hljs-built_in">real</span> insight missed.
+<span class="hljs-string">"""
+
+async def apply_self_critique(insight: Insight, transcript: str) -&gt; Insight:
+    critique = await llm.complete_structured(
+        system_prompt=SELF_CRITIQUE_PROMPT.format(
+            headline=insight.headline,
+            transcript_excerpt=insight.evidence[0].quote,
+            segment_id=insight.evidence[0].segment_id,
+            timestamp=insight.evidence[0].timestamp_display
+        ),
+        response_model=CritiqueResult
+    )
+
+    if critique.verdict == "</span>SUPPRESS<span class="hljs-string">":
+        insight.suppressed = True
+        insight.suppression_reason = critique.innocent_explanation
+
+    elif critique.verdict == "</span><span class="hljs-keyword">DOWNGRADE</span><span class="hljs-string">":
+        insight.confidence *= 0.75
+        insight.severity = downgrade_severity(insight.severity)
+
+    return insight</span>
+</code></pre>
+<blockquote>
+<p><strong>When to apply it:</strong> Not on every insight (cost and latency). Apply to 🔴 Red severity insights only — these are the ones that most directly influence manager behavior and are most damaging if wrong.</p>
+</blockquote>
+<hr>
+<h3 id="3-5-consistency-gate-run-twice-compare">3.5 Consistency Gate — Run Twice, Compare</h3>
+<p>For your highest-stakes frameworks, run the same analysis twice at low temperature. Agreement = high reliability. Disagreement = model is uncertain, regardless of individual confidence scores.</p>
+<pre><code class="lang-python"><span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run_with_consistency_check</span><span class="hljs-params">(
+    framework_id: str,
+    transcript: str,
+    model: str
+)</span> -&gt; FrameworkResult:</span>
+
+    <span class="hljs-keyword">if</span> framework_id <span class="hljs-keyword">not</span> <span class="hljs-keyword">in</span> HIGH_STAKES_FRAMEWORKS:
+        <span class="hljs-comment"># Standard single run</span>
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">await</span> run_framework(framework_id, transcript, model)
+
+    <span class="hljs-comment"># Run twice</span>
+    run_1, run_2 = <span class="hljs-keyword">await</span> asyncio.gather(
+        run_framework(framework_id, transcript, model),
+        run_framework(framework_id, transcript, model)
+    )
+
+    agreement_score = compare_results(run_1, run_2)
+
+    <span class="hljs-keyword">if</span> agreement_score &gt;= <span class="hljs-number">0.85</span>:
+        <span class="hljs-comment"># Runs agree — high reliability</span>
+        merged = merge_runs(run_1, run_2)
+        merged.confidence = min(<span class="hljs-number">1.0</span>, merged.confidence * <span class="hljs-number">1.15</span>)  <span class="hljs-comment"># Boost</span>
+        <span class="hljs-keyword">return</span> merged
+
+    <span class="hljs-keyword">elif</span> agreement_score &gt;= <span class="hljs-number">0.60</span>:
+        <span class="hljs-comment"># Runs partially agree — moderate reliability</span>
+        merged = merge_runs(run_1, run_2)
+        merged.headline += <span class="hljs-string">" (verify — mixed signals detected)"</span>
+        <span class="hljs-keyword">return</span> merged
+
+    <span class="hljs-keyword">else</span>:
+        <span class="hljs-comment"># Runs disagree significantly — model is uncertain</span>
+        <span class="hljs-comment"># Do not amplify the model's own uncertainty</span>
+        <span class="hljs-keyword">return</span> FrameworkResult(
+            framework_id=framework_id,
+            severity=<span class="hljs-string">"yellow"</span>,
+            confidence=<span class="hljs-number">0.45</span>,
+            headline=<span class="hljs-string">"Mixed signals — manual review recommended"</span>,
+            disagreement_data={<span class="hljs-string">"run_1"</span>: run_1, <span class="hljs-string">"run_2"</span>: run_2}
+        )
+
+<span class="hljs-comment"># Which frameworks get consistency checking?</span>
+HIGH_STAKES_FRAMEWORKS = {
+    <span class="hljs-string">"money_left_on_table"</span>,    <span class="hljs-comment"># Dollar amounts — wrong numbers = no credibility</span>
+    <span class="hljs-string">"commitment_quality"</span>,     <span class="hljs-comment"># Deal-determining — wrong call = wrong coaching</span>
+    <span class="hljs-string">"subconversation_detector"</span> <span class="hljs-comment"># Hypothesis-based — high false positive risk</span>
+}
+</code></pre>
+<hr>
+<h2 id="4-hallucination-prevention-techniques">4. Hallucination Prevention Techniques</h2>
+<h3 id="4-1-the-timestamp-contract">4.1 The Timestamp Contract</h3>
+<p>Timestamps are the most commonly hallucinated element in transcript analysis. The model has seen many examples with timestamps and will confidently generate plausible-looking ones that are wrong.</p>
+<p><strong>Solution: the model never generates timestamps. Ever.</strong></p>
+<pre><code class="lang-python"><span class="hljs-comment"># ❌ Wrong schema — trusts the model to produce correct timestamps</span>
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">EvidenceRef</span><span class="hljs-params">(BaseModel)</span>:</span>
+    timestamp: str        <span class="hljs-comment"># "23:15" — model-generated, unverified</span>
+    quote: str
+    speaker: str
+
+<span class="hljs-comment"># ✅ Right schema — model provides segment ID, timestamp comes from DB</span>
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">EvidenceRef</span><span class="hljs-params">(BaseModel)</span>:</span>
+    segment_id: str       <span class="hljs-comment"># "S_0034" — looked up in database</span>
+    quote: str            <span class="hljs-comment"># Verified against actual segment text</span>
+    speaker: str
+    <span class="hljs-comment"># timestamp is NEVER in this schema</span>
+
+<span class="hljs-comment"># Post-processing: resolve segment_id → timestamp from ground truth</span>
+<span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">resolve_timestamps</span><span class="hljs-params">(evidence_refs: list[EvidenceRef])</span> -&gt; list[ResolvedEvidence]:</span>
+    resolved = []
+    <span class="hljs-keyword">for</span> ref <span class="hljs-keyword">in</span> evidence_refs:
+        segment = db.get_segment(ref.segment_id)
+
+        <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> segment:
+            <span class="hljs-comment"># Segment ID doesn't exist — hallucinated reference</span>
+            log.warning(f<span class="hljs-string">"Hallucinated segment ID: {ref.segment_id}"</span>)
+            <span class="hljs-keyword">continue</span>
+
+        resolved.append(ResolvedEvidence(
+            segment_id=ref.segment_id,
+            timestamp_ms=segment.start_time_ms,           <span class="hljs-comment"># Ground truth</span>
+            timestamp_display=format_ts(segment.start_time_ms),  <span class="hljs-comment"># "23:15"</span>
+            quote=ref.quote,
+            speaker=segment.speaker_label,
+            verified=<span class="hljs-keyword">True</span>
+        ))
+
+    <span class="hljs-keyword">return</span> resolved
+</code></pre>
+<p>The timestamp the user sees in the UI always comes from the database. It cannot be wrong because the model never generated it.</p>
+<hr>
+<h3 id="4-2-quote-verification-fuzzy-string-matching">4.2 Quote Verification — Fuzzy String Matching</h3>
+<p>Every quote the model produces must be verified against the actual transcript segment.</p>
+<pre><code class="lang-python"><span class="hljs-keyword">from</span> difflib <span class="hljs-keyword">import</span> SequenceMatcher
+
+<span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">verify_quote</span><span class="hljs-params">(
+    claimed_quote: str,
+    segment_id: str,
+    transcript_segments: dict[str, TranscriptSegment]
+)</span> -&gt; QuoteVerificationResult:</span>
+    <span class="hljs-string">"""
+    Verifies that a model-generated quote actually appears in the transcript.
+
+    Returns:
+        - VERIFIED: Quote closely matches actual segment text
+        - PARTIAL: Quote is partially correct (model paraphrased)
+        - HALLUCINATED: Quote doesn't match segment at all
+    """</span>
+
+    segment = transcript_segments.get(segment_id)
+    <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> segment:
+        <span class="hljs-keyword">return</span> QuoteVerificationResult(
+            status=<span class="hljs-string">"HALLUCINATED"</span>,
+            similarity=<span class="hljs-number">0.0</span>,
+            note=<span class="hljs-string">"Segment ID does not exist in transcript"</span>
+        )
+
+    similarity = SequenceMatcher(
+        <span class="hljs-keyword">None</span>,
+        claimed_quote.lower().strip(),
+        segment.text.lower()
+    ).ratio()
+
+    <span class="hljs-keyword">if</span> similarity &gt;= <span class="hljs-number">0.80</span>:
+        <span class="hljs-keyword">return</span> QuoteVerificationResult(status=<span class="hljs-string">"VERIFIED"</span>, similarity=similarity)
+
+    <span class="hljs-keyword">elif</span> similarity &gt;= <span class="hljs-number">0.55</span>:
+        <span class="hljs-comment"># Model paraphrased — replace with actual segment text</span>
+        <span class="hljs-keyword">return</span> QuoteVerificationResult(
+            status=<span class="hljs-string">"PARTIAL"</span>,
+            similarity=similarity,
+            corrected_quote=segment.text,  <span class="hljs-comment"># Use actual text instead</span>
+            note=f<span class="hljs-string">"Model paraphrased. Using actual segment text."</span>
+        )
+
+    <span class="hljs-keyword">else</span>:
+        <span class="hljs-comment"># Clear hallucination</span>
+        <span class="hljs-keyword">return</span> QuoteVerificationResult(
+            status=<span class="hljs-string">"HALLUCINATED"</span>,
+            similarity=similarity,
+            note=f<span class="hljs-string">"Claimed quote ({similarity:.0%} match) does not appear in segment"</span>
+        )
+
+<span class="hljs-comment"># Action per status:</span>
+<span class="hljs-comment"># VERIFIED    → Use as-is</span>
+<span class="hljs-comment"># PARTIAL     → Replace model quote with actual segment text, slight confidence reduction</span>
+<span class="hljs-comment"># HALLUCINATED → Suppress this evidence reference, reduce overall insight confidence</span>
+</code></pre>
+<hr>
+<h3 id="4-3-minimum-evidence-requirements">4.3 Minimum Evidence Requirements</h3>
+<p>Structural rules that prevent a single ambiguous moment from producing a Red insight.</p>
+<pre><code class="lang-python">MINIMUM_EVIDENCE = {
+    Severity.RED: {
+        <span class="hljs-string">"min_evidence_count"</span>: <span class="hljs-number">2</span>,          <span class="hljs-comment"># Must have 2+ independent segments</span>
+        <span class="hljs-string">"min_confidence"</span>: <span class="hljs-number">0.75</span>,
+        <span class="hljs-string">"requires_verbatim_quote"</span>: <span class="hljs-keyword">True</span>,
+        <span class="hljs-string">"max_alternative_explanations"</span>: <span class="hljs-number">0</span>  <span class="hljs-comment"># No strong innocent explanations allowed</span>
+    },
+    Severity.ORANGE: {
+        <span class="hljs-string">"min_evidence_count"</span>: <span class="hljs-number">1</span>,
+        <span class="hljs-string">"min_confidence"</span>: <span class="hljs-number">0.65</span>,
+        <span class="hljs-string">"requires_verbatim_quote"</span>: <span class="hljs-keyword">True</span>,
+        <span class="hljs-string">"max_alternative_explanations"</span>: <span class="hljs-number">1</span>
+    },
+    Severity.YELLOW: {
+        <span class="hljs-string">"min_evidence_count"</span>: <span class="hljs-number">1</span>,
+        <span class="hljs-string">"min_confidence"</span>: <span class="hljs-number">0.50</span>,
+        <span class="hljs-string">"requires_verbatim_quote"</span>: <span class="hljs-keyword">False</span>,
+        <span class="hljs-string">"max_alternative_explanations"</span>: <span class="hljs-number">2</span>
+    },
+    Severity.GREEN: {
+        <span class="hljs-string">"min_evidence_count"</span>: <span class="hljs-number">1</span>,
+        <span class="hljs-string">"min_confidence"</span>: <span class="hljs-number">0.60</span>,
+        <span class="hljs-string">"requires_verbatim_quote"</span>: <span class="hljs-keyword">False</span>,
+        <span class="hljs-string">"max_alternative_explanations"</span>: <span class="hljs-number">3</span>
+    }
+}
+
+<span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">meets_evidence_requirements</span><span class="hljs-params">(
+    insight: Insight,
+    severity: Severity
+)</span> -&gt; tuple[bool, str]:</span>
+    reqs = MINIMUM_EVIDENCE[severity]
+
+    verified_evidence = [e <span class="hljs-keyword">for</span> e <span class="hljs-keyword">in</span> insight.evidence <span class="hljs-keyword">if</span> e.verified]
+
+    <span class="hljs-keyword">if</span> len(verified_evidence) &lt; reqs[<span class="hljs-string">"min_evidence_count"</span>]:
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">False</span>, f<span class="hljs-string">"Requires {reqs['min_evidence_count']} evidence segments, found {len(verified_evidence)}"</span>
+
+    <span class="hljs-keyword">if</span> insight.confidence &lt; reqs[<span class="hljs-string">"min_confidence"</span>]:
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">False</span>, f<span class="hljs-string">"Confidence {insight.confidence:.2f} below threshold {reqs['min_confidence']}"</span>
+
+    <span class="hljs-keyword">if</span> reqs[<span class="hljs-string">"requires_verbatim_quote"</span>] <span class="hljs-keyword">and</span> <span class="hljs-keyword">not</span> any(e.status == <span class="hljs-string">"VERIFIED"</span> <span class="hljs-keyword">for</span> e <span class="hljs-keyword">in</span> verified_evidence):
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">False</span>, <span class="hljs-string">"Red/Orange severity requires at least one verbatim-verified quote"</span>
+
+    <span class="hljs-keyword">return</span> <span class="hljs-keyword">True</span>, <span class="hljs-string">"OK"</span>
+</code></pre>
+<blockquote>
+<p><strong>Why this prevents confabulation:</strong> A model asked to find concessions in a clean call might find one borderline moment. The minimum evidence requirement means that borderline moment cannot surface as Red — it becomes Yellow at best, with low confidence. The manager sees &quot;possible minor issue&quot; not &quot;deal at risk.&quot;</p>
+</blockquote>
+<hr>
+<h3 id="4-4-segment-id-validation-before-anything-else">4.4 Segment ID Validation Before Anything Else</h3>
+<p>Before processing any model output, run a fast existence check on all segment IDs. This is cheap (DB lookup) and catches the most dangerous hallucination immediately.</p>
+<pre><code class="lang-python"><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">validate_segment_references</span><span class="hljs-params">(
+    framework_output: dict,
+    valid_segment_ids: set[str]
+)</span> -&gt; dict:</span>
+    <span class="hljs-string">"""
+    First validation pass: check all segment IDs exist.
+    This runs BEFORE any other processing.
+    """</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">check_evidence</span><span class="hljs-params">(evidence_list: list[dict])</span> -&gt; list[dict]:</span>
+        valid_evidence = []
+        <span class="hljs-keyword">for</span> ev <span class="hljs-keyword">in</span> evidence_list:
+            sid = ev.get(<span class="hljs-string">"segment_id"</span>)
+            <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> sid:
+                log.warning(<span class="hljs-string">"Evidence reference missing segment_id"</span>)
+                <span class="hljs-keyword">continue</span>
+            <span class="hljs-keyword">if</span> sid <span class="hljs-keyword">not</span> <span class="hljs-keyword">in</span> valid_segment_ids:
+                log.warning(f<span class="hljs-string">"Hallucinated segment ID: {sid}"</span>)
+                <span class="hljs-comment"># Do not include this evidence</span>
+                <span class="hljs-keyword">continue</span>
+            valid_evidence.append(ev)
+        <span class="hljs-keyword">return</span> valid_evidence
+
+    <span class="hljs-comment"># Check all evidence references recursively</span>
+    <span class="hljs-keyword">if</span> <span class="hljs-string">"evidence"</span> <span class="hljs-keyword">in</span> framework_output:
+        framework_output[<span class="hljs-string">"evidence"</span>] = check_evidence(framework_output[<span class="hljs-string">"evidence"</span>])
+
+    <span class="hljs-comment"># If all evidence was hallucinated, suppress the entire insight</span>
+    <span class="hljs-keyword">if</span> framework_output.get(<span class="hljs-string">"evidence"</span>) == []:
+        framework_output[<span class="hljs-string">"suppress"</span>] = <span class="hljs-keyword">True</span>
+        framework_output[<span class="hljs-string">"suppression_reason"</span>] = <span class="hljs-string">"All evidence references were invalid"</span>
+
+    <span class="hljs-keyword">return</span> framework_output
+</code></pre>
+<p><strong>This runs as the very first post-processing step.</strong> A hallucinated segment ID is the most reliable signal that the model fabricated the entire evidence chain.</p>
+<hr>
+<h3 id="4-5-honeypot-test-cases-red-teaming-your-prompts">4.5 Honeypot Test Cases — Red-Teaming Your Prompts</h3>
+<p>Build a library of test transcripts specifically designed to trigger hallucinations. Run every new prompt version against these before production.</p>
+<pre><code class="lang-python">HALLUCINATION_HONEYPOTS = [
+    {
+        <span class="hljs-string">"name"</span>: <span class="hljs-string">"clean_call_no_issues"</span>,
+        <span class="hljs-string">"description"</span>: <span class="hljs-string">"A well-executed call with no red flags"</span>,
+        <span class="hljs-string">"transcript"</span>: CLEAN_CALL_TRANSCRIPT,
+        <span class="hljs-string">"expected"</span>: {
+            <span class="hljs-string">"max_red_insights"</span>: <span class="hljs-number">0</span>,
+            <span class="hljs-string">"max_orange_insights"</span>: <span class="hljs-number">1</span>,
+            <span class="hljs-string">"min_green_insights"</span>: <span class="hljs-number">1</span>
+        },
+        <span class="hljs-string">"failure_means"</span>: <span class="hljs-string">"Framework is finding problems that don't exist (confabulation)"</span>
+    },
+    {
+        <span class="hljs-string">"name"</span>: <span class="hljs-string">"question_answered_fully"</span>,
+        <span class="hljs-string">"description"</span>: <span class="hljs-string">"Rep asks budget question, buyer answers directly with specifics"</span>,
+        <span class="hljs-string">"transcript"</span>: DIRECT_ANSWER_TRANSCRIPT,
+        <span class="hljs-string">"expected"</span>: {
+            <span class="hljs-string">"unanswered_questions.evaded_count"</span>: <span class="hljs-number">0</span>,
+            <span class="hljs-string">"unanswered_questions.severity"</span>: <span class="hljs-string">"green"</span>
+        },
+        <span class="hljs-string">"failure_means"</span>: <span class="hljs-string">"Evasion framework is too aggressive — misclassifying answers as evasions"</span>
+    },
+    {
+        <span class="hljs-string">"name"</span>: <span class="hljs-string">"no_concessions_made"</span>,
+        <span class="hljs-string">"description"</span>: <span class="hljs-string">"Rep holds firm on pricing throughout"</span>,
+        <span class="hljs-string">"transcript"</span>: NO_CONCESSION_TRANSCRIPT,
+        <span class="hljs-string">"expected"</span>: {
+            <span class="hljs-string">"money_left_on_table.unconditional_count"</span>: <span class="hljs-number">0</span>
+        },
+        <span class="hljs-string">"failure_means"</span>: <span class="hljs-string">"Concession framework is confabulating concessions from normal pricing discussion"</span>
+    },
+    {
+        <span class="hljs-string">"name"</span>: <span class="hljs-string">"timestamp_boundary_check"</span>,
+        <span class="hljs-string">"description"</span>: <span class="hljs-string">"10-minute call — all timestamps must be &lt; 10:00"</span>,
+        <span class="hljs-string">"transcript"</span>: TEN_MINUTE_TRANSCRIPT,
+        <span class="hljs-string">"expected_validation"</span>: <span class="hljs-built_in">lambda</span> output: (
+            all(
+                parse_timestamp(<span class="hljs-built_in">ev</span>.<span class="hljs-built_in">get</span>(<span class="hljs-string">"timestamp"</span>, <span class="hljs-string">"0:00"</span>)) &lt; <span class="hljs-number">600000</span>
+                <span class="hljs-keyword">for</span> insight <span class="hljs-keyword">in</span> output.<span class="hljs-built_in">get</span>(<span class="hljs-string">"insights"</span>, [])
+                <span class="hljs-keyword">for</span> <span class="hljs-built_in">ev</span> <span class="hljs-keyword">in</span> insight.<span class="hljs-built_in">get</span>(<span class="hljs-string">"evidence"</span>, [])
+            )
+        ),
+        <span class="hljs-string">"failure_means"</span>: <span class="hljs-string">"Model generating timestamps beyond the actual call duration"</span>
+    },
+    {
+        <span class="hljs-string">"name"</span>: <span class="hljs-string">"cultural_communication_style"</span>,
+        <span class="hljs-string">"description"</span>: <span class="hljs-string">"High-context communication that sounds indirect but is not evasive"</span>,
+        <span class="hljs-string">"transcript"</span>: HIGH_CONTEXT_TRANSCRIPT,
+        <span class="hljs-string">"expected"</span>: {
+            <span class="hljs-string">"unanswered_questions.evaded_count"</span>: <span class="hljs-number">0</span>
+        },
+        <span class="hljs-string">"failure_means"</span>: <span class="hljs-string">"Framework is misreading cultural communication style as evasion"</span>
+    }
+]
+</code></pre>
+<blockquote>
+<p><strong>Industry practice (Google DeepMind):</strong> Adversarial evaluation — deliberately trying to break your own system — is standard practice before any production deployment. The goal is to find failure modes before customers do.</p>
+</blockquote>
+<hr>
+<h2 id="5-post-generation-verification">5. Post-Generation Verification</h2>
+<h3 id="5-1-the-verification-pipeline">5.1 The Verification Pipeline</h3>
+<p>Every model output passes through a deterministic verification stack before becoming visible to users.</p>
+<pre><code>LLM Output (raw)
+      │
+      ▼
+┌─────────────────────────────────────────┐
+│  GATE <span class="hljs-number">1</span>: Schema Validation              │
+│  Too<span class="hljs-variable">l:</span> Pydantic + Instructor            │
+│  Catche<span class="hljs-variable">s:</span> Structural errors, missing    │
+│           required fields               │
+│  On fai<span class="hljs-variable">l:</span> Retry with stricter prompt    │
+└─────────────────────────┬───────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────┐
+│  GATE <span class="hljs-number">2</span>: Segment ID Existence           │
+│  Too<span class="hljs-variable">l:</span> Database lookup                  │
+│  Catche<span class="hljs-variable">s:</span> Hallucinated segment refs     │
+│  On fai<span class="hljs-variable">l:</span> Remove invalid evidence refs  │
+└─────────────────────────┬───────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────┐
+│  GATE <span class="hljs-number">3</span>: Quote Fuzzy Match              │
+│  Too<span class="hljs-variable">l:</span> SequenceMatcher (&gt; <span class="hljs-number">0.75</span>)         │
+│  Catche<span class="hljs-variable">s:</span> Fabricated <span class="hljs-built_in">or</span> wrong quotes    │
+│  On fai<span class="hljs-variable">l:</span> Replace with actual text <span class="hljs-built_in">or</span>   │
+│           reduce confidence             │
+└─────────────────────────┬───────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────┐
+│  GATE <span class="hljs-number">4</span>: Timestamp Resolution           │
+│  Too<span class="hljs-variable">l:</span> DB lookup from segment_id        │
+│  Catche<span class="hljs-variable">s:</span> Model-generated timestamps    │
+│  Action: Replace <span class="hljs-keyword">all</span> timestamps from DB │
+└─────────────────────────┬───────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────┐
+│  GATE <span class="hljs-number">5</span>: Minimum Evidence Check         │
+│  Too<span class="hljs-variable">l:</span> Evidence <span class="hljs-built_in">count</span> + confidence      │
+│  Catche<span class="hljs-variable">s:</span> Single-signal Red insights    │
+│  On fai<span class="hljs-variable">l:</span> Downgrade severity <span class="hljs-built_in">or</span>         │
+│           suppress entirely             │
+└─────────────────────────┬───────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────┐
+│  GATE <span class="hljs-number">6</span>: Self-Critique Pass             │
+│  Too<span class="hljs-variable">l:</span> Second LLM <span class="hljs-keyword">call</span> (adversarial)    │
+│  Applies <span class="hljs-keyword">to</span>: Red insights <span class="hljs-keyword">only</span>          │
+│  Catche<span class="hljs-variable">s:</span> Weak evidence dressed <span class="hljs-keyword">as</span>      │
+│           strong findings               │
+│  On fai<span class="hljs-variable">l:</span> Suppress <span class="hljs-built_in">or</span> downgrade         │
+└─────────────────────────┬───────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────┐
+│  GATE <span class="hljs-number">7</span>: Cross-Framework Consistency    │
+│  Too<span class="hljs-variable">l:</span> Post-processing synthesis        │
+│  Catche<span class="hljs-variable">s:</span> Isolated findings with <span class="hljs-keyword">no</span>     │
+│           corroboration                 │
+│  Action: Boost <span class="hljs-keyword">if</span> corroborated,         │
+│          reduce <span class="hljs-keyword">if</span> contradicted         │
+└─────────────────────────┬───────────────┘
+                          │
+                          ▼
+                   Verified Insight
+                 (safe <span class="hljs-keyword">to</span> show user)
+</code></pre><hr>
+<h3 id="5-2-calibrated-confidence-from-verifiable-components">5.2 Calibrated Confidence from Verifiable Components</h3>
+<p>Never ask the model &quot;how confident are you?&quot; That produces uncalibrated scores. Build confidence from verifiable sub-signals.</p>
+<pre><code class="lang-python"><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">CalibratedConfidence</span>:</span>
+    <span class="hljs-string">"""
+    Confidence computed from measurable evidence quality,
+    not from the model's self-assessment.
+    """</span>
+
+    evidence_count: int            <span class="hljs-comment"># Number of verified segments</span>
+    quote_verification_score: float  <span class="hljs-comment"># Average fuzzy match score</span>
+    alternative_explanations: int    <span class="hljs-comment"># Number of innocent explanations</span>
+    pattern_recurrence: int          <span class="hljs-comment"># How many times does pattern appear?</span>
+    cross_framework_agreement: int   <span class="hljs-comment"># How many frameworks agree?</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">compute</span><span class="hljs-params">(self)</span> -&gt; float:</span>
+        score = <span class="hljs-number">0.40</span>  <span class="hljs-comment"># Base score</span>
+
+        <span class="hljs-comment"># More verified evidence = more confidence</span>
+        score += min(<span class="hljs-number">0.20</span>, self.evidence_count * <span class="hljs-number">0.07</span>)
+
+        <span class="hljs-comment"># Higher quote quality = more confidence</span>
+        score += (self.quote_verification_score - <span class="hljs-number">0.75</span>) * <span class="hljs-number">0.15</span>
+
+        <span class="hljs-comment"># More recurrence = more confidence (patterns beat single instances)</span>
+        score += min(<span class="hljs-number">0.15</span>, (self.pattern_recurrence - <span class="hljs-number">1</span>) * <span class="hljs-number">0.08</span>)
+
+        <span class="hljs-comment"># Alternative explanations reduce confidence</span>
+        score -= self.alternative_explanations * <span class="hljs-number">0.08</span>
+
+        <span class="hljs-comment"># Cross-framework agreement boosts confidence</span>
+        score += self.cross_framework_agreement * <span class="hljs-number">0.05</span>
+
+        <span class="hljs-keyword">return</span> max(<span class="hljs-number">0.0</span>, min(<span class="hljs-number">1.0</span>, score))
+
+<span class="hljs-comment"># Example:</span>
+confidence = CalibratedConfidence(
+    evidence_count=<span class="hljs-number">3</span>,              <span class="hljs-comment"># +0.21</span>
+    quote_verification_score=<span class="hljs-number">0.88</span>, <span class="hljs-comment"># +0.02</span>
+    alternative_explanations=<span class="hljs-number">1</span>,    <span class="hljs-comment"># -0.08</span>
+    pattern_recurrence=<span class="hljs-number">2</span>,          <span class="hljs-comment"># +0.08</span>
+    cross_framework_agreement=<span class="hljs-number">1</span>    <span class="hljs-comment"># +0.05</span>
+).compute()
+<span class="hljs-comment"># = 0.40 + 0.21 + 0.02 + 0.08 - 0.08 + 0.05 = 0.68</span>
+</code></pre>
+<hr>
+<h2 id="6-evaluation-infrastructure">6. Evaluation Infrastructure</h2>
+<h3 id="6-1-the-golden-dataset">6.1 The Golden Dataset</h3>
+<p>A set of manually annotated calls where a human has determined the correct output for every framework. The ground truth that everything is measured against.</p>
+<pre><code class="lang-python"><span class="hljs-meta"># Golden dataset entry structure</span>
+@dataclass
+class GoldenEntry:
+<span class="hljs-symbol">    call_id:</span> str
+<span class="hljs-symbol">    transcript:</span> str
+<span class="hljs-symbol">    expected_outputs:</span> dict[str, FrameworkOutput]
+
+    <span class="hljs-meta"># The human annotation</span>
+<span class="hljs-symbol">    annotator_notes:</span> str
+<span class="hljs-symbol">    annotation_date:</span> str
+
+    <span class="hljs-meta"># Edge case classification</span>
+<span class="hljs-symbol">    is_edge_case:</span> bool
+<span class="hljs-symbol">    edge_case_type:</span> Optional[str]  <span class="hljs-meta"># <span class="hljs-string">"natural_topic_transition"</span>, <span class="hljs-string">"cultural_style"</span>, etc.</span>
+
+GOLDEN_DATASET = [
+    GoldenEntry(
+        call_id=<span class="hljs-string">"golden_001"</span>,
+        transcript=PRICING_CALL_TRANSCRIPT,
+        expected_outputs={
+            <span class="hljs-string">"unanswered_questions"</span>: FrameworkOutput(
+                evaded_count=<span class="hljs-number">2</span>,
+                severity=<span class="hljs-string">"red"</span>,
+                evidence_segments=[<span class="hljs-string">"S_0034"</span>, <span class="hljs-string">"S_0078"</span>]
+            ),
+            <span class="hljs-string">"money_left_on_table"</span>: FrameworkOutput(
+                unconditional_count=<span class="hljs-number">1</span>,
+                estimated_value_usd=<span class="hljs-number">18000</span>,
+                severity=<span class="hljs-string">"orange"</span>
+            )
+        },
+        annotator_notes=<span class="hljs-string">"Clear budget authority evasion at S_0034, S_0078. "</span>
+                        <span class="hljs-string">"Single unconditional discount at S_0091."</span>,
+        edge_case_type=None
+    ),
+
+    <span class="hljs-meta"># Edge case: natural topic transition that looks like evasion</span>
+    GoldenEntry(
+        call_id=<span class="hljs-string">"golden_005"</span>,
+        transcript=NATURAL_TRANSITION_TRANSCRIPT,
+        expected_outputs={
+            <span class="hljs-string">"unanswered_questions"</span>: FrameworkOutput(
+                evaded_count=<span class="hljs-number">0</span>,     <span class="hljs-meta"># ← The model often gets this wrong</span>
+                severity=<span class="hljs-string">"green"</span>
+            )
+        },
+        annotator_notes=<span class="hljs-string">"Rep asked about timeline. Buyer answered with a range "</span>
+                        <span class="hljs-string">"then naturally moved to a related topic. This is NOT evasion."</span>,
+        is_edge_case=True,
+        edge_case_type=<span class="hljs-string">"natural_topic_transition"</span>
+    )
+]
+</code></pre>
+<p><strong>Minimum dataset size:</strong> 5 calls to start, expanding to 20+ over time. Each negative feedback event that&#39;s clearly correct becomes a new golden entry — the dataset grows organically from usage.</p>
+<hr>
+<h3 id="6-2-promptfoo-evaluation-configuration">6.2 Promptfoo Evaluation Configuration</h3>
+<pre><code class="lang-yaml"># eval_unanswered_questions<span class="hljs-variable">.yaml</span>
+description: <span class="hljs-string">"Evaluation suite for Unanswered Questions framework v1"</span>
+
+prompts:
+  - file:<span class="hljs-comment">//prompts/group_b/unanswered_questions_v1.py</span>
+  - file:<span class="hljs-comment">//prompts/group_b/unanswered_questions_v2.py  # New version being tested</span>
+
+providers:
+  - id: anthropic:claude-sonnet-<span class="hljs-number">4</span>-<span class="hljs-number">20250514</span>
+    <span class="hljs-keyword">config</span>:
+      temperature: <span class="hljs-number">0</span><span class="hljs-variable">.05</span>
+
+tests:
+  - description: <span class="hljs-string">"Detects clear budget authority evasion"</span>
+    vars:
+      transcript: <span class="hljs-string">"{{golden_001_transcript}}"</span>
+      pass1_output: <span class="hljs-string">"{{golden_001_pass1}}"</span>
+    <span class="hljs-keyword">assert</span>:
+      - <span class="hljs-keyword">type</span>: javascript
+        value: |
+          <span class="hljs-keyword">const</span> <span class="hljs-keyword">output</span> = JSON<span class="hljs-variable">.parse</span>(<span class="hljs-keyword">output</span>);
+          <span class="hljs-keyword">return</span> <span class="hljs-keyword">output</span><span class="hljs-variable">.evaded_count</span> === <span class="hljs-number">2</span>
+               &amp;&amp; <span class="hljs-keyword">output</span><span class="hljs-variable">.severity</span> === <span class="hljs-string">"red"</span>
+               &amp;&amp; <span class="hljs-keyword">output</span><span class="hljs-variable">.evidence</span><span class="hljs-variable">.some</span>(e =&gt; e<span class="hljs-variable">.segment_id</span> === <span class="hljs-string">"S_0034"</span>)
+               &amp;&amp; <span class="hljs-keyword">output</span><span class="hljs-variable">.evidence</span><span class="hljs-variable">.some</span>(e =&gt; e<span class="hljs-variable">.segment_id</span> === <span class="hljs-string">"S_0078"</span>);
+
+  - description: <span class="hljs-string">"Does NOT flag natural topic transitions as evasion"</span>
+    vars:
+      transcript: <span class="hljs-string">"{{golden_005_transcript}}"</span>
+    <span class="hljs-keyword">assert</span>:
+      - <span class="hljs-keyword">type</span>: javascript
+        value: |
+          <span class="hljs-keyword">const</span> <span class="hljs-keyword">output</span> = JSON<span class="hljs-variable">.parse</span>(<span class="hljs-keyword">output</span>);
+          <span class="hljs-comment">// This is the critical regression test</span>
+          <span class="hljs-keyword">return</span> <span class="hljs-keyword">output</span><span class="hljs-variable">.evaded_count</span> === <span class="hljs-number">0</span> &amp;&amp; <span class="hljs-keyword">output</span><span class="hljs-variable">.severity</span> === <span class="hljs-string">"green"</span>;
+
+  - description: <span class="hljs-string">"Returns null on clean call with no evasion"</span>
+    vars:
+      transcript: <span class="hljs-string">"{{clean_call_transcript}}"</span>
+    <span class="hljs-keyword">assert</span>:
+      - <span class="hljs-keyword">type</span>: javascript
+        value: |
+          <span class="hljs-keyword">const</span> <span class="hljs-keyword">output</span> = JSON<span class="hljs-variable">.parse</span>(<span class="hljs-keyword">output</span>);
+          <span class="hljs-keyword">return</span> <span class="hljs-keyword">output</span><span class="hljs-variable">.evaded_count</span> === <span class="hljs-number">0</span>;
+
+# Regression gate: <span class="hljs-keyword">if</span> any metric drops by &gt;<span class="hljs-number">5</span>% vs. baseline, block deployment
+threshold:
+  precision: <span class="hljs-number">0</span><span class="hljs-variable">.80</span>
+  recall: <span class="hljs-number">0</span><span class="hljs-variable">.75</span>
+  f1: <span class="hljs-number">0</span><span class="hljs-variable">.77</span>
+</code></pre>
+<hr>
+<h3 id="6-3-metrics-that-actually-matter">6.3 Metrics That Actually Matter</h3>
+<pre><code class="lang-python"><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">FrameworkEvalMetrics</span>:</span>
+    <span class="hljs-string">"""
+    Evaluation metrics for a single framework across the golden dataset.
+    """</span>
+
+    <span class="hljs-comment"># Standard ML metrics</span>
+    precision: float    <span class="hljs-comment"># Of all insights surfaced, what % were correct?</span>
+    recall: float       <span class="hljs-comment"># Of all real issues in golden dataset, what % were found?</span>
+    f1: float          <span class="hljs-comment"># Harmonic mean — the single number to optimize</span>
+
+    <span class="hljs-comment"># Signal-specific metrics</span>
+    evidence_accuracy: float     <span class="hljs-comment"># Do cited segments contain the claimed behavior?</span>
+    severity_accuracy: float     <span class="hljs-comment"># Was severity correctly classified?</span>
+    confidence_calibration: float  <span class="hljs-comment"># Does the confidence score predict correctness?</span>
+
+    <span class="hljs-comment"># Business impact metrics</span>
+    false_positive_rate: float   <span class="hljs-comment"># How often does it fire when nothing is there?</span>
+    false_negative_rate: float   <span class="hljs-comment"># How often does it miss real issues?</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">regression_gate</span><span class="hljs-params">(self, baseline: <span class="hljs-string">"FrameworkEvalMetrics"</span>)</span> -&gt; bool:</span>
+        <span class="hljs-string">"""
+        Returns True if this version can be deployed.
+        Any metric that drops &gt;5% from baseline = blocked.
+        """</span>
+        metrics = [<span class="hljs-string">"precision"</span>, <span class="hljs-string">"recall"</span>, <span class="hljs-string">"f1"</span>, <span class="hljs-string">"evidence_accuracy"</span>, <span class="hljs-string">"severity_accuracy"</span>]
+        <span class="hljs-keyword">for</span> metric <span class="hljs-keyword">in</span> metrics:
+            current = getattr(self, metric)
+            base = getattr(baseline, metric)
+            <span class="hljs-keyword">if</span> current &lt; base * <span class="hljs-number">0.95</span>:  <span class="hljs-comment"># &gt;5% drop</span>
+                print(f<span class="hljs-string">"BLOCKED: {metric} dropped from {base:.2f} to {current:.2f}"</span>)
+                <span class="hljs-keyword">return</span> <span class="hljs-keyword">False</span>
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">True</span>
+</code></pre>
+<hr>
+<h2 id="7-industry-approaches">7. Industry Approaches</h2>
+<h3 id="7-1-how-major-companies-handle-llm-reliability">7.1 How Major Companies Handle LLM Reliability</h3>
+<table>
+<thead>
+<tr>
+<th>Company</th>
+<th>Product</th>
+<th>Approach</th>
+<th>Key Technique</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Anthropic</strong></td>
+<td>Claude</td>
+<td>Constitutional AI + RLHF</td>
+<td>Model trained to critique its own outputs before finalizing</td>
+</tr>
+<tr>
+<td><strong>Microsoft</strong></td>
+<td>Azure OpenAI</td>
+<td>Azure AI Content Safety</td>
+<td>Separate classifier validates model output before delivery</td>
+</tr>
+<tr>
+<td><strong>Google DeepMind</strong></td>
+<td>Gemini</td>
+<td>Chain-of-thought + tool use</td>
+<td>Forces reasoning trace, uses tools for fact retrieval not memory</td>
+</tr>
+<tr>
+<td><strong>Perplexity AI</strong></td>
+<td>Search</td>
+<td>Citation-first architecture</td>
+<td>Every claim must have a retrievable citation; uncited claims blocked</td>
+</tr>
+<tr>
+<td><strong>Cursor</strong></td>
+<td>Code editor</td>
+<td>Multi-model verification</td>
+<td>Code suggestions verified by a separate model for correctness</td>
+</tr>
+<tr>
+<td><strong>Harvey AI</strong></td>
+<td>Legal</td>
+<td>Human-in-the-loop + retrieval</td>
+<td>High-stakes claims always grounded in retrieved documents, not model memory</td>
+</tr>
+<tr>
+<td><strong>Glean</strong></td>
+<td>Enterprise search</td>
+<td>RAG with source attribution</td>
+<td>Model never answers from memory; always retrieves source first</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="7-2-retrieval-augmented-generation-rag-the-most-widely-adopted-pattern">7.2 Retrieval-Augmented Generation (RAG) — The Most Widely Adopted Pattern</h3>
+<p>The most common industry solution to hallucination: <strong>don&#39;t ask the model to remember things; ask it to analyze things you give it</strong>.</p>
+<p>For Signal, RAG means: the model does not recall what a &quot;typical sales evasion sounds like&quot; from training data. It receives the exact transcript segments and classifies what it sees.</p>
+<pre><code>Traditional LLM:
+  Question → Model's memory → Answer
+  Hallucination risk: HIGH (model fills gaps <span class="hljs-keyword">from</span> training data)
+
+RAG Pattern:
+  Question → Retrieve relevant segments → Model + segments → Answer
+  Hallucination risk: LOW (model reasons <span class="hljs-keyword">over</span> provided <span class="hljs-built_in">text</span>, <span class="hljs-keyword">not</span> memory)
+</code></pre><p>Signal&#39;s architecture is naturally RAG-compatible — every analysis prompt includes the actual transcript. The additional step is making this explicit: <strong>block all paths where the model might be reasoning from general knowledge rather than the provided text</strong>.</p>
+<hr>
+<h3 id="7-3-constitutional-ai-anthropic-applied-to-prompt-engineering">7.3 Constitutional AI (Anthropic) — Applied to Prompt Engineering</h3>
+<p>Anthropic&#39;s Constitutional AI trains models using a set of principles that guide self-critique. The same principle can be applied at the prompt level.</p>
+<p><strong>The technique applied to Signal&#39;s prompts:</strong></p>
+<pre><code>BEHAVIORAL CONSTITUTION FOR THIS ANALYSIS:
+
+Before generating any insight, <span class="hljs-keyword">check</span> your <span class="hljs-keyword">output</span> against these principles:
+
+<span class="hljs-number">1.</span> EVIDENCE PRINCIPLE: Every claim has a verbatim quote <span class="hljs-keyword">from</span> the transcript.
+   <span class="hljs-keyword">If</span> this principle <span class="hljs-keyword">is</span> violated, remove the claim.
+
+<span class="hljs-number">2.</span> HUMILITY PRINCIPLE: <span class="hljs-keyword">Where</span> evidence <span class="hljs-keyword">is</span> weak, say so explicitly.
+   <span class="hljs-string">"Possible"</span> <span class="hljs-keyword">is</span> more honest <span class="hljs-keyword">than</span> <span class="hljs-string">"indicates."</span> <span class="hljs-keyword">Use</span> it.
+
+<span class="hljs-number">3.</span> <span class="hljs-literal">NULL</span> PRINCIPLE: <span class="hljs-keyword">No</span> insight <span class="hljs-keyword">is</span> better <span class="hljs-keyword">than</span> a wrong insight.
+   <span class="hljs-keyword">If</span> you cannot find <span class="hljs-keyword">clear</span> evidence, <span class="hljs-keyword">return</span> null.
+
+<span class="hljs-number">4.</span> ALTERNATIVE PRINCIPLE: <span class="hljs-keyword">For</span> every pattern you detect, generate
+   the most charitable innocent explanation. <span class="hljs-keyword">If</span> it<span class="hljs-string">'s plausible,
+   reduce your confidence.
+
+5. IMPACT PRINCIPLE: This analysis influences how a manager coaches
+   a real person. False positives have real consequences.
+   Default to caution.
+
+Self-check: Before producing your final output, verify each insight
+against all 5 principles. Remove any that fail.</span>
+</code></pre><p>This in-prompt constitution functions similarly to how Constitutional AI guides model behavior — but at the prompt level, no fine-tuning required.</p>
+<hr>
+<h3 id="7-4-the-least-privilege-prompt-pattern">7.4 The &quot;Least Privilege&quot; Prompt Pattern</h3>
+<p>From security engineering: give the model only what it needs to do its specific task. No more.</p>
+<pre><code class="lang-python"><span class="hljs-comment"># ❌ Over-privileged prompt (gives model too much context, too many tasks)</span>
+<span class="hljs-attr">prompt</span> = f<span class="hljs-string">"""
+You are an expert sales coach with deep knowledge of behavioral psychology,
+sales methodologies (SPIN, MEDDIC, Challenger), negotiation theory, and
+communication science.
+
+Here is a complete sales call transcript:
+{full_transcript}  # 8,000 tokens
+
+Analyze everything. Find all issues. Generate comprehensive coaching.
+"""</span>
+
+<span class="hljs-comment"># ✅ Least-privilege prompt (narrow task, relevant context only)</span>
+<span class="hljs-attr">prompt</span> = f<span class="hljs-string">"""
+You are analyzing question-response pairs from a sales call.
+Your only task: determine if the buyer answered each question.
+You have no other role.
+
+Here are the relevant transcript segments:
+{qa_pairs_only}  # 800 tokens — only the relevant pairs
+
+For each pair: answered / vague / evaded / counter_question.
+Nothing else. No coaching. No analysis. No interpretation beyond classification.
+"""</span>
+</code></pre>
+<p>The narrow prompt:</p>
+<ul>
+<li>Has less surface area for the model to confabulate</li>
+<li>Has a specific, verifiable output format</li>
+<li>Cannot be sidetracked into &quot;helpful&quot; extra analysis</li>
+<li>Runs in a fraction of the tokens</li>
+</ul>
+<hr>
+<h3 id="7-5-human-in-the-loop-at-the-right-granularity">7.5 Human-in-the-Loop at the Right Granularity</h3>
+<p>Not all decisions need human verification. The industry standard is calibrated human review based on stakes and uncertainty.</p>
+<pre><code>┌────────────────────────────────────────────────────────────┐
+│                HUMAN REVIEW DECISION <span class="hljs-keyword">MATRIX</span>                │
+├──────────────────────┬───────────────────────────────────  │
+│ High Stakes +        │                                      │
+│ Low Confidence       │  HUMAN REVIEW REQUIRED               │
+│                      │  (<span class="hljs-keyword">e</span>.<span class="hljs-keyword">g</span>., Red insight, <span class="hljs-keyword">conf</span> &lt; 0.65)    │
+├──────────────────────┼──────────────────────────────────────┤
+│ High Stakes +        │                                      │
+│ High Confidence      │  SHOW WITH FEEDBACK BUTTONS          │
+│                      │  (Red insight, <span class="hljs-keyword">conf</span> &gt; 0.80)          │
+├──────────────────────┼──────────────────────────────────────┤
+│ Low Stakes +         │                                      │
+│ Low Confidence       │  SHOW <span class="hljs-keyword">IN</span> FULL RESULTS ONLY           │
+│                      │  (Yellow insight, <span class="hljs-keyword">conf</span> &lt; 0.65)       │
+├──────────────────────┼──────────────────────────────────────┤
+│ Low Stakes +         │                                      │
+│ High Confidence      │  SHOW AUTOMATICALLY                  │
+│                      │  (Yellow/Green, <span class="hljs-keyword">conf</span> &gt; 0.70)         │
+└──────────────────────┴──────────────────────────────────────┘
+</code></pre><p>For Signal: thumbs up/down on insight cards is the human-in-the-loop mechanism. The feedback is not just for UX — it&#39;s the primary mechanism for expanding the golden dataset and identifying where the pipeline fails.</p>
+<hr>
+<h2 id="8-the-complete-reliability-stack">8. The Complete Reliability Stack</h2>
+<h3 id="8-1-everything-together">8.1 Everything Together</h3>
+<pre><code class="lang-python"><span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run_reliable_analysis</span><span class="hljs-params">(
+    call_id: str,
+    transcript_segments: list[TranscriptSegment],
+    frameworks: list[str],
+    config: PipelineConfig
+)</span> -&gt; list[VerifiedInsight]:</span>
+
+    <span class="hljs-comment"># ── PASS 1: Infrastructure (shared signals) ──────────────────</span>
+    pass1_result = <span class="hljs-keyword">await</span> run_pass1(transcript_segments)
+
+    <span class="hljs-comment"># ── PASS 2: Framework Analysis ───────────────────────────────</span>
+    raw_results = <span class="hljs-keyword">await</span> asyncio.gather(*[
+        run_framework_with_reliability(
+            framework_id=fw,
+            segments=filter_segments_for_framework(fw, transcript_segments),
+            pass1=pass1_result,
+            config=config
+        )
+        <span class="hljs-keyword">for</span> fw <span class="hljs-keyword">in</span> frameworks
+    ])
+
+    <span class="hljs-comment"># ── POST-PROCESSING: Verification Stack ──────────────────────</span>
+    verified_insights = []
+
+    <span class="hljs-keyword">for</span> raw <span class="hljs-keyword">in</span> raw_results:
+        <span class="hljs-keyword">if</span> raw <span class="hljs-keyword">is</span> <span class="hljs-keyword">None</span>:
+            <span class="hljs-keyword">continue</span>
+
+        <span class="hljs-comment"># Gate 1: Schema validation (Pydantic)</span>
+        <span class="hljs-comment"># → Already enforced by Instructor at generation time</span>
+
+        <span class="hljs-comment"># Gate 2: Segment ID existence</span>
+        raw = validate_segment_references(raw, valid_ids=get_valid_segment_ids(call_id))
+        <span class="hljs-keyword">if</span> raw.get(<span class="hljs-string">"suppress"</span>):
+            <span class="hljs-keyword">continue</span>
+
+        <span class="hljs-comment"># Gate 3: Quote verification</span>
+        raw = verify_all_quotes(raw, transcript_segments)
+
+        <span class="hljs-comment"># Gate 4: Timestamp resolution (never trust model-generated timestamps)</span>
+        raw = resolve_timestamps_from_db(raw, transcript_segments)
+
+        <span class="hljs-comment"># Gate 5: Minimum evidence requirements</span>
+        passes, reason = meets_evidence_requirements(raw, raw.severity)
+        <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> passes:
+            raw.severity = downgrade_severity(raw.severity)
+
+        <span class="hljs-comment"># Gate 6: Self-critique (Red insights only)</span>
+        <span class="hljs-keyword">if</span> raw.severity == Severity.RED:
+            raw = <span class="hljs-keyword">await</span> apply_self_critique(raw, transcript_segments)
+
+        <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> raw.suppressed:
+            verified_insights.append(raw)
+
+    <span class="hljs-comment"># Gate 7: Cross-framework triangulation</span>
+    verified_insights = apply_triangulation(verified_insights)
+
+    <span class="hljs-comment"># Gate 8: Calibrated confidence (replace model confidence with computed)</span>
+    <span class="hljs-keyword">for</span> insight <span class="hljs-keyword">in</span> verified_insights:
+        insight.confidence = compute_calibrated_confidence(insight)
+
+    <span class="hljs-comment"># Final: Filter by confidence threshold</span>
+    surfaced_insights = [
+        i <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> verified_insights
+        <span class="hljs-keyword">if</span> i.confidence &gt;= config.min_confidence_to_surface
+    ]
+
+    <span class="hljs-keyword">return</span> sorted(surfaced_insights, key=<span class="hljs-keyword">lambda</span> i: (i.severity_rank, -i.confidence))
+</code></pre>
+<hr>
+<h3 id="8-2-the-reliability-principles-summary-">8.2 The Reliability Principles (Summary)</h3>
+<pre><code><span class="hljs-number">1.</span> CLOSED WORLD
+   The transcript <span class="hljs-keyword">is</span> <span class="hljs-keyword">the</span> only truth.
+   <span class="hljs-string">"I don't know"</span> <span class="hljs-keyword">is</span> always a valid answer.
+   Null <span class="hljs-keyword">is</span> better than wrong.
+
+<span class="hljs-number">2.</span> CITE BEFORE CLAIM
+   Anchor <span class="hljs-keyword">every</span> analysis <span class="hljs-keyword">in</span> verbatim <span class="hljs-built_in">text</span>.
+   Evidence <span class="hljs-keyword">first</span>. Interpretation <span class="hljs-keyword">second</span>. Never <span class="hljs-keyword">the</span> <span class="hljs-built_in">reverse</span>.
+
+<span class="hljs-number">3.</span> NEVER TRUST MODEL TIMESTAMPS
+   Timestamps always come <span class="hljs-keyword">from</span> <span class="hljs-keyword">the</span> database via segment IDs.
+   The model identifies segments; <span class="hljs-keyword">the</span> system resolves their <span class="hljs-built_in">time</span>.
+
+<span class="hljs-number">4.</span> DECOMPOSE COMPLEXITY
+   One prompt, one task. Chain verified outputs.
+   Errors caught early don't compound downstream.
+
+<span class="hljs-number">5.</span> TEMPERATURE IS DESIGN
+   Extraction: <span class="hljs-number">0.0</span>. Classification: <span class="hljs-number">0.05</span>. Interpretation: <span class="hljs-number">0.10</span>.
+   Creativity only <span class="hljs-keyword">where</span> creativity <span class="hljs-keyword">is</span> needed.
+
+<span class="hljs-number">6.</span> MINIMUM EVIDENCE
+   A single data point <span class="hljs-keyword">is</span> <span class="hljs-keyword">not</span> a pattern.
+   Red requires two independent verified evidence segments. Always.
+
+<span class="hljs-number">7.</span> VERIFY PROGRAMMATICALLY
+   Segment IDs checked <span class="hljs-keyword">against</span> <span class="hljs-keyword">the</span> database.
+   Quotes fuzzy-matched <span class="hljs-keyword">against</span> actual <span class="hljs-built_in">text</span>.
+   The system, <span class="hljs-keyword">not</span> <span class="hljs-keyword">the</span> model, <span class="hljs-keyword">is</span> <span class="hljs-keyword">the</span> source <span class="hljs-keyword">of</span> truth.
+
+<span class="hljs-number">8.</span> CALIBRATE CONFIDENCE
+   Don't ask <span class="hljs-keyword">the</span> model how confident <span class="hljs-keyword">it</span> <span class="hljs-keyword">is</span>.
+   Compute confidence <span class="hljs-keyword">from</span> verifiable sub-signals.
+
+<span class="hljs-number">9.</span> TEST FOR ABSENCE
+   Include null/negative cases <span class="hljs-keyword">in</span> <span class="hljs-keyword">every</span> evaluation suite.
+   A model <span class="hljs-keyword">that</span> can't <span class="hljs-literal">return</span> green <span class="hljs-keyword">on</span> a clean call <span class="hljs-keyword">is</span> confabulating.
+
+<span class="hljs-number">10.</span> MAKE FAILURE HONEST
+    When uncertain: show confidence scores.
+    When wrong: <span class="hljs-built_in">log</span> <span class="hljs-keyword">it</span>, learn <span class="hljs-keyword">from</span> <span class="hljs-keyword">it</span>, expand <span class="hljs-keyword">the</span> golden dataset.
+    The worst outcome <span class="hljs-keyword">is</span> silent failure.
+</code></pre><hr>
+<h3 id="8-3-the-feedback-loop-turning-failures-into-assets">8.3 The Feedback Loop — Turning Failures into Assets</h3>
+<p>Every wrong answer is training data for making the next answer right.</p>
+<pre><code>User sees insight → thumbs down
+        │
+        ▼
+Log: {insight_id, framework_id, prompt_version, model, call_id}
+        │
+        ▼
+Developer reviews Langfuse <span class="hljs-built_in">trace</span>:
+  → What was the exact <span class="hljs-built_in">prompt</span> input?
+  → What was the exact model output?
+  → Why did it <span class="hljs-built_in">go</span> wrong?
+        │
+        ▼
+Categorize the failure:
+  A. Prompt ambiguity (the <span class="hljs-built_in">prompt</span> was unclear)
+  B. Missing negative <span class="hljs-built_in">example</span> (model never saw this edge case)
+  C. Confidence miscalibration (finding <span class="hljs-built_in">is</span> <span class="hljs-built_in">real</span> but confidence was too high)
+  D. Evidence hallucination (cited text doesn't exist)
+        │
+        ▼
+Fix:
+  A → Rewrite the ambiguous <span class="hljs-built_in">part</span> of the <span class="hljs-built_in">prompt</span>
+  B → Add this case as a negative few-shot <span class="hljs-built_in">example</span>
+  C → Adjust confidence calibration logic
+  D → Tighten quote verification threshold
+        │
+        ▼
+Add this transcript + expected output to golden dataset
+        │
+        ▼
+Run promptfoo <span class="hljs-built_in">eval</span> → regression gate → deploy <span class="hljs-keyword">if</span> passes
+        │
+        ▼
+System <span class="hljs-built_in">is</span> now smarter <span class="hljs-keyword">for</span> this failure mode. Forever.
+</code></pre><p>This flywheel — negative feedback → golden dataset entry → better prompt → better output → less negative feedback — is the compounding advantage that makes the system improve with use rather than plateau at launch quality.</p>
+<hr>
+<p><em>The goal is not a perfect LLM. The goal is a system where LLM imperfection is contained, labeled honestly, and converted into improvement signal. Build the walls first. Then make them smarter.</em></p>
+</body></html>

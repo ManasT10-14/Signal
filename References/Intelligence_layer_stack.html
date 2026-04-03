@@ -1,0 +1,1011 @@
+<html><head><style>/* =========================================================
+   SIGNAL ARCHITECTURE DOCS — PREMIUM ENGINEERING THEME
+   Optimized for exported Markdown HTML with heavy <pre><code>
+   ========================================================= */
+
+body {
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #f8fafc;
+    color: #1f2937;
+    line-height: 1.85;
+    font-size: 16px;
+    max-width: 1150px;
+    margin: 0 auto;
+    padding: 42px 28px;
+    text-rendering: optimizeLegibility;
+}
+
+/* ================= HEADINGS ================= */
+h1, h2, h3, h4 {
+    color: #0f172a;
+    line-height: 1.3;
+    font-weight: 700;
+}
+
+h1 {
+    font-size: 2.7rem;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 3px solid #dbeafe;
+}
+
+h2 {
+    font-size: 2rem;
+    margin-top: 3rem;
+    margin-bottom: 1rem;
+    padding: 14px 18px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-left: 5px solid #2563eb;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+
+h3 {
+    font-size: 1.45rem;
+    margin-top: 2rem;
+    padding-left: 12px;
+    border-left: 4px solid #93c5fd;
+}
+
+/* ================= TEXT ================= */
+p {
+    margin: 1rem 0;
+}
+
+strong {
+    color: #111827;
+    font-weight: 700;
+}
+
+blockquote {
+    margin: 1.5rem 0;
+    padding: 16px 18px;
+    background: #ffffff;
+    border-left: 4px solid #3b82f6;
+    border-radius: 10px;
+    color: #374151;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+
+/* ================= LISTS ================= */
+ul, ol {
+    padding-left: 1.6rem;
+    margin: 1rem 0;
+}
+
+li {
+    margin: 0.45rem 0;
+}
+
+/* ================= INLINE CODE ================= */
+:not(pre) > code {
+    background: #eef2ff;
+    color: #6d28d9;
+    padding: 0.2em 0.45em;
+    border-radius: 6px;
+    font-size: 0.95em;
+    font-family: "Fira Code", Consolas, Monaco, monospace;
+}
+
+/* ================= CODE BLOCKS ================= */
+pre {
+    background: #111827;
+    color: #f9fafb;
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin: 1.4rem 0;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    border: 1px solid #1f2937;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+
+/* ================= ASCII DIAGRAM EMPHASIS ================= */
+/* This makes architecture blocks feel more like diagrams */
+pre code {
+    font-family: "Fira Code", Consolas, Monaco, monospace;
+    font-size: 14px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+}
+
+/* Extra separation for consecutive diagrams */
+pre + pre {
+    margin-top: 2rem;
+}
+
+/* ================= TABLES ================= */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.6rem 0;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+    display: block;
+    overflow-x: auto;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+
+th, td {
+    border: 1px solid #e5e7eb;
+    padding: 12px 14px;
+    text-align: left;
+    vertical-align: top;
+}
+
+th {
+    background: #f8fafc;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+/* ================= SECTION DIVIDERS ================= */
+hr {
+    border: none;
+    border-top: 1px solid #d1d5db;
+    margin: 2.4rem 0;
+}
+
+/* ================= IMAGES ================= */
+img {
+    max-width: 100%;
+    border-radius: 10px;
+    margin: 1rem 0;
+}
+
+/* ================= SPECIAL ENGINEERING DOC POLISH ================= */
+h2 + p,
+h2 + blockquote,
+h2 + pre,
+h2 + table {
+    margin-top: 1.2rem;
+}
+
+/* Better flow between tables and diagrams */
+table + pre,
+pre + table {
+    margin-top: 2rem;
+}
+
+/* ================= RESPONSIVE ================= */
+@media (max-width: 768px) {
+    body {
+        padding: 20px 14px;
+        font-size: 15px;
+    }
+
+    h1 {
+        font-size: 2rem;
+    }
+
+    h2 {
+        font-size: 1.55rem;
+        padding: 12px 14px;
+    }
+
+    h3 {
+        font-size: 1.25rem;
+    }
+
+    pre {
+        padding: 14px;
+    }
+}</style></head><body><h1 id="signal-intelligence-layer-tech-stack">Signal — Intelligence Layer Tech Stack</h1>
+<h2 id="phase-1-recommendation-decision-record">Phase 1 Recommendation &amp; Decision Record</h2>
+<p><strong>Document Type:</strong> Architecture Decision Record (ADR)
+<strong>Version:</strong> 3.0
+<strong>Date:</strong> March 31, 2026
+<strong>Status:</strong> Proposed — Pending Founder Approval
+<strong>Supersedes:</strong> PRD v2.2 Section 5 (Decision #7) and Section 18</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#1-executive-summary">Executive Summary</a></li>
+<li><a href="#2-what-the-prd-currently-specifies">What the PRD Currently Specifies</a></li>
+<li><a href="#3-what-we-are-recommending-instead">What We Are Recommending Instead</a></li>
+<li><a href="#4-the-full-recommended-stack">The Full Recommended Stack</a></li>
+<li><a href="#5-why-arq-over-celery">Why ARQ Over Celery</a></li>
+<li><a href="#6-why-langgraph-over-raw-celery-chains">Why LangGraph Over Raw Celery Chains</a></li>
+<li><a href="#7-how-arq--langgraph-work-together">How ARQ + LangGraph Work Together</a></li>
+<li><a href="#8-alternatives-considered-and-rejected">Alternatives Considered and Rejected</a></li>
+<li><a href="#9-migration-path--phase-2-and-beyond">Migration Path — Phase 2 and Beyond</a></li>
+<li><a href="#10-cost-comparison">Cost Comparison</a></li>
+<li><a href="#11-risk-analysis">Risk Analysis</a></li>
+<li><a href="#12-final-decision-summary">Final Decision Summary</a></li>
+</ol>
+<hr>
+<h2 id="1-executive-summary">1. Executive Summary</h2>
+<p>The PRD v2.2 specifies <strong>Celery + Redis</strong> for async job processing with raw Celery task chains handling the pipeline internally. This document recommends replacing that with <strong>ARQ + Redis + LangGraph</strong> — a cleaner, fully async stack where:</p>
+<ul>
+<li><strong>ARQ</strong> handles job queuing and concurrency (replaces Celery)</li>
+<li><strong>LangGraph</strong> handles pipeline orchestration inside each job (replaces manual Celery task chaining)</li>
+<li><strong>Redis</strong> remains unchanged — same dependency, same cost</li>
+</ul>
+<p>Everything else in the PRD stack remains exactly the same.</p>
+<p><strong>The change is surgical. The benefit is significant.</strong></p>
+<p>The rest of the stack — FastAPI, Postgres, AWS S3, Instructor, Pydantic, Langfuse, promptfoo — stays exactly as the PRD specifies. This is not a rewrite. It is a replacement of one queue library (Celery) with a better-suited one (ARQ), and the addition of a pipeline orchestration layer (LangGraph) that the PRD was handling manually and incorrectly.</p>
+<hr>
+<h2 id="2-what-the-prd-currently-specifies">2. What the PRD Currently Specifies</h2>
+<p>From PRD v2.2 Section 5, Decision #7:</p>
+<blockquote>
+<p><em>&quot;FastAPI (Python) + Postgres (JSONB) + AWS S3 + Redis + Celery&quot;</em>
+<em>&quot;Python for LLM ecosystem compatibility. JSONB for flexible framework outputs. Celery + Redis for async pipeline processing.&quot;</em></p>
+</blockquote>
+<p>And from Section 18.2:</p>
+<blockquote>
+<p><em>&quot;Celery + Redis. No BullMQ, no alternatives.&quot;</em></p>
+</blockquote>
+<p>The PRD then specifies <strong>8 separate Celery queues</strong>:</p>
+<pre><code><span class="hljs-attribute">transcription</span>
+preprocessing
+pass1
+pass2_group_a
+pass2_group_b
+pass2_group_c
+pass2_group_e
+product_translation
+</code></pre><p>Each queue has its own workers. Tasks pass <code>call_id</code> between queues. The pipeline coordinates via <code>completed_at</code> timestamps in Postgres — manually checking which stages are done before proceeding.</p>
+<h3 id="problems-with-this-approach">Problems with this approach</h3>
+<p><strong>Problem 1 — Celery is a sync-first system fighting async.</strong></p>
+<p>Signal&#39;s entire stack is async: FastAPI (async), Anthropic SDK (async), OpenAI SDK (async), AssemblyAI SDK (async). Celery was built in 2009 for synchronous Python. Its async support (<code>celery[eventlet]</code>, <code>celery[gevent]</code>) is bolted on and routinely causes subtle bugs — deadlocks, task leaks, event loop conflicts. Running <code>asyncio.run()</code> inside a Celery task (the common workaround) blocks the worker thread.</p>
+<p><strong>Problem 2 — 8 queues is 8 things to configure, monitor, and debug.</strong></p>
+<p>When something breaks (and it will), you need to check which of 8 queues failed, which worker dropped the message, and where the <code>call_id</code> got lost in transit. This is operational complexity with no benefit. Signal&#39;s pipeline is one logical unit — it should be one queue entry.</p>
+<p><strong>Problem 3 — Manual checkpointing is fragile.</strong></p>
+<p>The PRD&#39;s idempotency strategy is: check <code>completed_at</code> timestamps in Postgres before running each stage. This is custom logic that must be written, tested, and maintained. Every developer who touches the pipeline must understand this convention. It is easy to get wrong — a missed <code>completed_at</code> write means a stage re-runs on retry. A wrong query means a stage gets skipped.</p>
+<p><strong>Problem 4 — No visibility into the pipeline&#39;s internal state.</strong></p>
+<p>With 8 Celery queues, Celery Flower (the monitoring tool) shows you queue depths and task statuses — but it cannot show you &quot;this call is currently on Group B, Group A finished 2 minutes ago.&quot; You have no graph of the pipeline&#39;s execution. Debugging a stuck call means querying multiple tables.</p>
+<hr>
+<h2 id="3-what-we-are-recommending-instead">3. What We Are Recommending Instead</h2>
+<p><strong>One queue. One pipeline orchestrator. Full visibility. Zero manual checkpointing.</strong></p>
+<pre><code>PRD spec:     Celery (8 queues) + manual completed_at checkpointing
+This doc:     ARQ   (1 queue)   + LangGraph automatic checkpointing
+</code></pre><h3 id="the-mental-model">The mental model</h3>
+<pre><code>User uploads <span class="hljs-keyword">call</span>
+      │
+      ▼
+FastAPI → ARQ puts ONE job <span class="hljs-keyword">in</span> Redis → <span class="hljs-keyword">returns</span> instantly <span class="hljs-keyword">to</span> <span class="hljs-keyword">user</span>
+                    │
+                    ▼
+         ARQ Worker picks up the job
+                    │
+                    ▼
+         LangGraph runs the pipeline internally:
+         ┌──────────────────────────────────────────────┐
+         │  preprocess → pass1 → [A + B + C + E] → <span class="hljs-keyword">translate</span> │
+         │                                              │
+         │  <span class="hljs-keyword">After</span> <span class="hljs-keyword">each</span> node: state saved <span class="hljs-keyword">to</span> Postgres    │
+         │  (<span class="hljs-keyword">automatic</span>, <span class="hljs-keyword">no</span> custom code needed)          │
+         └──────────────────────────────────────────────┘
+                    │
+                    ▼
+         <span class="hljs-keyword">Call</span> <span class="hljs-keyword">status</span> → <span class="hljs-string">"ready"</span> → frontend notified
+</code></pre><p>ARQ asks: <strong>when should this job run and on which worker?</strong>
+LangGraph asks: <strong>what happens step by step inside the job?</strong></p>
+<p>They operate at completely different levels. They never conflict.</p>
+<hr>
+<h2 id="4-the-full-recommended-stack">4. The Full Recommended Stack</h2>
+<h3 id="intelligence-layer-complete-stack">Intelligence Layer — Complete Stack</h3>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Component</th>
+<th>Purpose</th>
+<th>Replaces (PRD)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>API</strong></td>
+<td>FastAPI</td>
+<td>HTTP endpoints, webhook handling</td>
+<td>Same</td>
+</tr>
+<tr>
+<td><strong>Job Queue</strong></td>
+<td><strong>ARQ + Redis</strong></td>
+<td>Async job queuing, concurrency control, worker management</td>
+<td>Celery + Redis</td>
+</tr>
+<tr>
+<td><strong>Pipeline Orchestration</strong></td>
+<td><strong>LangGraph</strong></td>
+<td>DAG execution, parallel groups, state management, checkpointing</td>
+<td>8 manual Celery queues + <code>completed_at</code> logic</td>
+</tr>
+<tr>
+<td><strong>Structured LLM Outputs</strong></td>
+<td>Instructor + Pydantic</td>
+<td>Schema-enforced outputs from every LLM call</td>
+<td>Same</td>
+</tr>
+<tr>
+<td><strong>LLM Providers</strong></td>
+<td>Anthropic SDK + OpenAI SDK (direct)</td>
+<td>LLM API calls</td>
+<td>Same</td>
+</tr>
+<tr>
+<td><strong>ASR Providers</strong></td>
+<td>AssemblyAI SDK + Deepgram SDK</td>
+<td>Speech-to-text</td>
+<td>Same</td>
+</tr>
+<tr>
+<td><strong>LLM Retry Logic</strong></td>
+<td>tenacity</td>
+<td>Exponential backoff on LLM calls within nodes</td>
+<td>Custom (PRD left unspecified)</td>
+</tr>
+<tr>
+<td><strong>Observability</strong></td>
+<td>Langfuse</td>
+<td>Prompt tracing, cost tracking, A/B evals</td>
+<td>Same</td>
+</tr>
+<tr>
+<td><strong>Prompt Evaluation</strong></td>
+<td>promptfoo</td>
+<td>Golden dataset eval, regression gate</td>
+<td>Same</td>
+</tr>
+<tr>
+<td><strong>Primary Database</strong></td>
+<td>Postgres (JSONB)</td>
+<td>All application data + LangGraph checkpoint store</td>
+<td>Same (adds checkpoint tables)</td>
+</tr>
+<tr>
+<td><strong>Cache</strong></td>
+<td>Redis</td>
+<td>ARQ broker + application caching</td>
+<td>Same</td>
+</tr>
+<tr>
+<td><strong>Audio Storage</strong></td>
+<td>AWS S3</td>
+<td>Audio file storage</td>
+<td>Same</td>
+</tr>
+<tr>
+<td><strong>Auth</strong></td>
+<td>Clerk</td>
+<td>Authentication</td>
+<td>Same</td>
+</tr>
+</tbody>
+</table>
+<h3 id="what-changed-from-the-prd">What changed from the PRD</h3>
+<pre><code><span class="hljs-string">REMOVED:</span>  Celery (celery[redis], celery[eventlet], flower)
+<span class="hljs-string">ADDED:</span>    ARQ
+<span class="hljs-string">ADDED:</span>    LangGraph (langgraph, langgraph-checkpoint-postgres)
+<span class="hljs-string">ADDED:</span>    tenacity (retry logic — PRD left <span class="hljs-keyword">this</span> <span class="hljs-keyword">as</span> <span class="hljs-string">"write it yourself"</span>)
+<span class="hljs-string">UNCHANGED:</span> Everything <span class="hljs-keyword">else</span>
+</code></pre><hr>
+<h2 id="5-why-arq-over-celery">5. Why ARQ Over Celery</h2>
+<p>ARQ (Async Redis Queue) is a modern Python job queue built ground-up for async. It was created because Celery&#39;s async story is fundamentally broken for modern Python async applications.</p>
+<h3 id="code-comparison-same-task-two-libraries">Code comparison — same task, two libraries</h3>
+<p><strong>Celery:</strong></p>
+<pre><code class="lang-python"># celery_config.py — <span class="hljs-number">40</span>+ lines <span class="hljs-keyword">of</span> configuration
+app = Celery(<span class="hljs-string">'signal'</span>)
+app.config_from_object(<span class="hljs-string">'celeryconfig'</span>)
+app.conf.update(
+    broker_url=<span class="hljs-string">'redis://localhost:6379/0'</span>,
+    result_backend=<span class="hljs-string">'redis://localhost:6379/0'</span>,
+    task_serializer=<span class="hljs-string">'json'</span>,
+    accept_content=[<span class="hljs-string">'json'</span>],
+    result_serializer=<span class="hljs-string">'json'</span>,
+    timezone=<span class="hljs-string">'UTC'</span>,
+    enable_utc=<span class="hljs-keyword">True</span>,
+    worker_concurrency=<span class="hljs-number">3</span>,
+    task_acks_late=<span class="hljs-keyword">True</span>,
+    worker_prefetch_multiplier=<span class="hljs-number">1</span>,
+    # ... <span class="hljs-number">20</span>+ more settings
+)
+
+# tasks.py
+@app.task(bind=<span class="hljs-keyword">True</span>, max_retries=<span class="hljs-number">3</span>, default_retry_delay=<span class="hljs-number">30</span>)
+def process_call(<span class="hljs-keyword">self</span>, call_id: str):
+    <span class="hljs-keyword">try</span>:
+        # LangGraph <span class="hljs-keyword">is</span> <span class="hljs-keyword">async</span>. Celery <span class="hljs-keyword">is</span> sync. Conflict.
+        # You must <span class="hljs-keyword">do</span> this awkward workaround:
+        <span class="hljs-keyword">loop</span> = asyncio.new_event_loop()
+        asyncio.set_event_loop(<span class="hljs-keyword">loop</span>)
+        <span class="hljs-keyword">loop</span>.run_until_complete(pipeline.ainvoke(<span class="hljs-comment">{"call_id": call_id}</span>))
+        <span class="hljs-keyword">loop</span>.close()
+    <span class="hljs-keyword">except</span> Exception <span class="hljs-keyword">as</span> exc:
+        <span class="hljs-keyword">raise</span> <span class="hljs-keyword">self</span>.retry(exc=exc)
+</code></pre>
+<p><strong>ARQ:</strong></p>
+<pre><code class="lang-python"><span class="hljs-comment"># workers.py — 8 lines total</span>
+<span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">process_call</span><span class="hljs-params">(ctx, call_id: str)</span>:</span>
+    <span class="hljs-keyword">await</span> pipeline.ainvoke({<span class="hljs-string">"call_id"</span>: call_id})  <span class="hljs-comment"># native async, no gymnastics</span>
+
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">WorkerSettings</span>:</span>
+    functions = [process_call]
+    redis_settings = RedisSettings(host=<span class="hljs-string">'localhost'</span>)
+    max_jobs = <span class="hljs-number">3</span>
+    job_timeout = <span class="hljs-number">600</span>  <span class="hljs-comment"># 10 min max per call</span>
+    retry_jobs = <span class="hljs-keyword">True</span>
+    max_tries = <span class="hljs-number">3</span>
+</code></pre>
+<p><strong>Enqueueing (FastAPI route) — identical concept, ARQ is cleaner:</strong></p>
+<pre><code class="lang-python"><span class="hljs-meta"># Celery</span>
+process_call.delay(call_id)
+
+<span class="hljs-meta"># ARQ</span>
+await redis_pool.enqueue_job(<span class="hljs-string">'process_call'</span>, call_id)
+</code></pre>
+<h3 id="head-to-head-comparison">Head-to-head comparison</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Celery</th>
+<th>ARQ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Native async support</td>
+<td>No — bolted on via eventlet/gevent</td>
+<td>Yes — built for async</td>
+</tr>
+<tr>
+<td>FastAPI compatibility</td>
+<td>Requires workarounds</td>
+<td>First-class, same event loop</td>
+</tr>
+<tr>
+<td>Configuration</td>
+<td>40-100+ lines</td>
+<td>~8 lines</td>
+</tr>
+<tr>
+<td>Redis dependency</td>
+<td>Yes</td>
+<td>Yes (same)</td>
+</tr>
+<tr>
+<td>Job retry</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Concurrency control</td>
+<td>Yes</td>
+<td>Yes (<code>max_jobs</code>)</td>
+</tr>
+<tr>
+<td>Job timeout</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Priority queues</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Monitoring UI</td>
+<td>Flower (separate install)</td>
+<td>ARQ dashboard (built-in)</td>
+</tr>
+<tr>
+<td>Debug complexity</td>
+<td>High</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>Stack Overflow answers</td>
+<td>Thousands</td>
+<td>Fewer but sufficient</td>
+</tr>
+<tr>
+<td>Active maintenance</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Production usage</td>
+<td>Massive (Instagram, etc.)</td>
+<td>Growing — used by FastAPI-heavy companies</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-one-honest-advantage-celery-has">The one honest advantage Celery has</h3>
+<p>Celery has a larger community and more battle-hardened edge case handling. If something breaks with ARQ at 3am, there are fewer Stack Overflow answers. This is a real tradeoff.</p>
+<p><strong>Why it doesn&#39;t outweigh ARQ&#39;s advantages for Signal:</strong> Signal&#39;s pipeline is straightforward — one job type (<code>process_call</code>), one queue, well-understood failure modes. The cases where Celery&#39;s maturity matters (complex routing, canvas workflows, multi-broker setups) don&#39;t apply here. ARQ&#39;s simplicity reduces the surface area for bugs in the first place.</p>
+<hr>
+<h2 id="6-why-langgraph-over-raw-celery-chains">6. Why LangGraph Over Raw Celery Chains</h2>
+<p>The PRD&#39;s approach to pipeline orchestration is 8 Celery queues coordinated via <code>completed_at</code> timestamps. This is the highest-risk part of the PRD&#39;s architecture.</p>
+<h3 id="what-the-prd-s-pipeline-actually-looks-like-in-code">What the PRD&#39;s pipeline actually looks like in code</h3>
+<pre><code class="lang-python"><span class="hljs-comment"># PRD approach — pseudocode of what building this would require</span>
+
+<span class="hljs-meta">@app.task</span>
+<span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">transcription_task</span><span class="hljs-params">(call_id)</span>:</span>
+    result = run_asr(call_id)
+    db.store_segments(call_id, result)
+    db.update_stage(call_id, <span class="hljs-string">'transcription'</span>, completed_at=now())
+    preprocessing_task.delay(call_id)  <span class="hljs-comment"># manually chain to next task</span>
+
+<span class="hljs-meta">@app.task</span>
+<span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">preprocessing_task</span><span class="hljs-params">(call_id)</span>:</span>
+    <span class="hljs-comment"># Check if transcription is done (it should be, but just in case)</span>
+    <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> db.stage_completed(call_id, <span class="hljs-string">'transcription'</span>):
+        <span class="hljs-keyword">raise</span> Exception(<span class="hljs-string">"Transcription not done yet"</span>)  <span class="hljs-comment"># now what?</span>
+    segments = db.get_segments(call_id)
+    clean = preprocess(segments)
+    db.store_clean_segments(call_id, clean)
+    db.update_stage(call_id, <span class="hljs-string">'preprocessing'</span>, completed_at=now())
+    pass1_task.delay(call_id)
+
+<span class="hljs-meta">@app.task</span>
+<span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">pass1_task</span><span class="hljs-params">(call_id)</span>:</span>
+    segments = db.get_segments(call_id)
+    result = run_pass1_llm(segments)  <span class="hljs-comment"># but Celery is sync, LLM SDK is async...</span>
+    db.store_pass1(call_id, result)
+    db.update_stage(call_id, <span class="hljs-string">'pass1'</span>, completed_at=now())
+    <span class="hljs-comment"># Now dispatch 4 parallel tasks — Celery group/chord</span>
+    group([
+        group_a_task.s(call_id),
+        group_b_task.s(call_id),
+        group_c_task.s(call_id),
+        group_e_task.s(call_id),
+    ] | translate_task.s(call_id)).delay()  <span class="hljs-comment"># Celery chord — notoriously buggy</span>
+
+<span class="hljs-comment"># ... 4 more group tasks, 1 translate task</span>
+<span class="hljs-comment"># Total: ~300 lines of boilerplate coordination code</span>
+<span class="hljs-comment"># Every line is custom logic that can fail silently</span>
+</code></pre>
+<p>This is not hypothetical complexity — this is what you would actually build following the PRD.</p>
+<h3 id="what-langgraph-looks-like-for-the-same-pipeline">What LangGraph looks like for the same pipeline</h3>
+<pre><code class="lang-python"><span class="hljs-comment"># LangGraph approach</span>
+
+<span class="hljs-comment"># Define the state (data that flows through the pipeline)</span>
+class SignalState(TypedDict):
+    call_id: str
+    segments: list
+    pass1_result: dict
+    group_results: dict
+    insights: list
+    summary: str
+
+<span class="hljs-comment"># Each step is a clean, testable async function</span>
+async def preprocess_node(<span class="hljs-keyword">state</span>: SignalState) -&gt; SignalState:
+    segments = await run_asr_and_clean(<span class="hljs-keyword">state</span>[<span class="hljs-string">"call_id"</span>])
+    return {**<span class="hljs-keyword">state</span>, <span class="hljs-string">"segments"</span>: segments}
+
+async def pass1_node(<span class="hljs-keyword">state</span>: SignalState) -&gt; SignalState:
+    result = await run_pass1_llm(<span class="hljs-keyword">state</span>[<span class="hljs-string">"segments"</span>])
+    return {**<span class="hljs-keyword">state</span>, <span class="hljs-string">"pass1_result"</span>: result}
+
+async def parallel_groups_node(<span class="hljs-keyword">state</span>: SignalState) -&gt; SignalState:
+    <span class="hljs-comment"># All 4 groups run simultaneously — native async</span>
+    a, b, c, e = await asyncio.gather(
+        run_group_a(<span class="hljs-keyword">state</span>[<span class="hljs-string">"segments"</span>], <span class="hljs-keyword">state</span>[<span class="hljs-string">"pass1_result"</span>]),
+        run_group_b(<span class="hljs-keyword">state</span>[<span class="hljs-string">"segments"</span>], <span class="hljs-keyword">state</span>[<span class="hljs-string">"pass1_result"</span>]),
+        run_group_c(<span class="hljs-keyword">state</span>[<span class="hljs-string">"segments"</span>], <span class="hljs-keyword">state</span>[<span class="hljs-string">"pass1_result"</span>]),
+        run_group_e(<span class="hljs-keyword">state</span>[<span class="hljs-string">"segments"</span>], <span class="hljs-keyword">state</span>[<span class="hljs-string">"pass1_result"</span>]),
+    )
+    return {**<span class="hljs-keyword">state</span>, <span class="hljs-string">"group_results"</span>: {<span class="hljs-string">"a"</span>: a, <span class="hljs-string">"b"</span>: b, <span class="hljs-string">"c"</span>: c, <span class="hljs-string">"e"</span>: e}}
+
+async def translate_node(<span class="hljs-keyword">state</span>: SignalState) -&gt; SignalState:
+    insights = generate_insights(<span class="hljs-keyword">state</span>[<span class="hljs-string">"group_results"</span>])
+    summary = await generate_summary(<span class="hljs-keyword">state</span>[<span class="hljs-string">"segments"</span>], <span class="hljs-keyword">state</span>[<span class="hljs-string">"group_results"</span>])
+    await db.update_call_status(<span class="hljs-keyword">state</span>[<span class="hljs-string">"call_id"</span>], <span class="hljs-string">"ready"</span>)
+    return {**<span class="hljs-keyword">state</span>, <span class="hljs-string">"insights"</span>: insights, <span class="hljs-string">"summary"</span>: summary}
+
+<span class="hljs-comment"># Wire the graph — this IS the architecture diagram</span>
+workflow = StateGraph(SignalState)
+workflow.add_node(<span class="hljs-string">"preprocess"</span>, preprocess_node)
+workflow.add_node(<span class="hljs-string">"pass1"</span>, pass1_node)
+workflow.add_node(<span class="hljs-string">"parallel_groups"</span>, parallel_groups_node)
+workflow.add_node(<span class="hljs-string">"translate"</span>, translate_node)
+
+workflow.set_entry_point(<span class="hljs-string">"preprocess"</span>)
+workflow.add_edge(<span class="hljs-string">"preprocess"</span>, <span class="hljs-string">"pass1"</span>)
+workflow.add_edge(<span class="hljs-string">"pass1"</span>, <span class="hljs-string">"parallel_groups"</span>)
+workflow.add_edge(<span class="hljs-string">"parallel_groups"</span>, <span class="hljs-string">"translate"</span>)
+workflow.set_finish_point(<span class="hljs-string">"translate"</span>)
+
+<span class="hljs-comment"># Attach checkpointer — this is the entire idempotency solution</span>
+checkpointer = PostgresSaver(db_connection)
+pipeline = workflow.compile(checkpointer=checkpointer)
+</code></pre>
+<p><strong>Total coordination code: ~15 lines</strong> (the graph wiring). The PRD approach requires ~300 lines of custom coordination that must be written, tested, and maintained.</p>
+<h3 id="langgraph-s-checkpointing-vs-prd-s-manual-completed_at-">LangGraph&#39;s checkpointing vs PRD&#39;s manual <code>completed_at</code></h3>
+<p>This is the most important difference.</p>
+<p><strong>PRD approach — manual checkpointing:</strong></p>
+<pre><code>Server crashes <span class="hljs-keyword">after</span> pass1_node completes
+→ Celery retries <span class="hljs-keyword">the</span> task <span class="hljs-keyword">from</span> <span class="hljs-keyword">the</span> <span class="hljs-keyword">beginning</span>
+→ Re-runs preprocessing (wasted compute)
+→ Re-runs Pass1 LLM call (costs money — ~$<span class="hljs-number">0.10</span> per call)
+→ Developer must manually verify completed_at logic works correctly
+→ Edge cases: what <span class="hljs-keyword">if</span> completed_at was written <span class="hljs-keyword">but</span> data wasn't committed?
+</code></pre><p><strong>LangGraph approach — automatic checkpointing:</strong></p>
+<pre><code>Server crashes <span class="hljs-keyword">after</span> pass1_node completes
+→ ARQ retries <span class="hljs-keyword">the</span> task
+→ LangGraph reads checkpoint <span class="hljs-built_in">from</span> Postgres
+→ <span class="hljs-string">"preprocess: done ✓, pass1: done ✓, parallel_groups: not started"</span>
+→ Resumes <span class="hljs-built_in">from</span> parallel_groups only
+→ Zero wasted compute, <span class="hljs-literal">zero</span> wasted API cost
+→ No custom code — this is built <span class="hljs-keyword">into</span> LangGraph
+</code></pre><h3 id="langgraph-s-phase-2-5-value">LangGraph&#39;s Phase 2-5 value</h3>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Requirement</th>
+<th>LangGraph handles it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P2 — Deal Intelligence</td>
+<td>Track behavioral state across multiple calls in a deal. A deal&#39;s &quot;commitment trajectory&quot; evolves over 5 calls spanning weeks.</td>
+<td>LangGraph&#39;s persistent state store naturally holds deal-level state across multiple graph runs.</td>
+</tr>
+<tr>
+<td>P3 — Coaching Engine</td>
+<td>Conditional analysis paths: &quot;if rep&#39;s question quality is below baseline, run deeper diagnostic frameworks&quot;</td>
+<td>Conditional edges in LangGraph — <code>add_conditional_edges()</code></td>
+</tr>
+<tr>
+<td>P5 — Real-time streaming</td>
+<td>Stream insights token-by-token as they&#39;re generated</td>
+<td>LangGraph&#39;s <code>.astream()</code> — no architectural change required</td>
+</tr>
+<tr>
+<td>P5 — Custom Framework Builder</td>
+<td>Enterprise customers define their own frameworks → dynamic pipeline construction</td>
+<td>LangGraph graphs can be constructed dynamically at runtime</td>
+</tr>
+</tbody>
+</table>
+<p>If you build the PRD&#39;s 8-queue Celery approach, adding Phase 2 longitudinal analysis means re-architecting the pipeline. LangGraph&#39;s graph model accommodates it naturally.</p>
+<hr>
+<h2 id="7-how-arq-langgraph-work-together">7. How ARQ + LangGraph Work Together</h2>
+<p>A common point of confusion: &quot;Aren&#39;t ARQ and LangGraph both doing orchestration? Do they conflict?&quot;</p>
+<p>No. They operate at completely different levels and never touch the same concern.</p>
+<pre><code>┌──────────────────────────────────────────────────────────────────┐
+│  ARQ's Domain: <span class="hljs-string">"WHO gets processed and WHEN"</span>                     │
+│                                                                  │
+│  - <span class="hljs-number">10</span> users upload simultaneously                               │
+│  - ARQ queues <span class="hljs-number">10</span> jobs <span class="hljs-keyword">in</span> Redis                                  │
+│  - <span class="hljs-number">3</span> workers pick up <span class="hljs-number">3</span> jobs (concurrency limit)                 │
+│  - Other <span class="hljs-number">7</span> jobs wait their turn                                 │
+│  - Worker finishes → immediately picks next job                  │
+│  - If worker crashes → ARQ retries <span class="hljs-keyword">the</span> job <span class="hljs-keyword">on</span> another worker    │
+│                                                                  │
+│  ARQ knows nothing <span class="hljs-keyword">about</span>: transcripts, LLMs, frameworks         │
+└─────────────────────────┬────────────────────────────────────────┘
+                          │ hands one job <span class="hljs-keyword">to</span> one worker
+                          ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  LangGraph's Domain: <span class="hljs-string">"WHAT happens inside the job"</span>               │
+│                                                                  │
+│  - Receives: call_id                                            │
+│  - Runs: preprocess → pass1 → [A||B||C||E] → translate          │
+│  - Saves checkpoint <span class="hljs-keyword">after</span> <span class="hljs-keyword">every</span> node                            │
+│  - If server crashes mid-node → resumes <span class="hljs-keyword">from</span> <span class="hljs-keyword">last</span> checkpoint    │
+│  - Passes state <span class="hljs-keyword">between</span> nodes automatically                     │
+│                                                                  │
+│  LangGraph knows nothing <span class="hljs-keyword">about</span>: other users, queue depth        │
+└──────────────────────────────────────────────────────────────────┘
+</code></pre><p><strong>In code — the handoff:</strong></p>
+<pre><code class="lang-python"><span class="hljs-comment"># ARQ worker function — the handoff point</span>
+<span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">process_call</span><span class="hljs-params">(ctx, call_id: str)</span>:</span>
+    <span class="hljs-string">"""
+    ARQ calls this function when it's this call's turn.
+    LangGraph takes over from here.
+    """</span>
+    <span class="hljs-keyword">await</span> pipeline.ainvoke(
+        {<span class="hljs-string">"call_id"</span>: call_id, <span class="hljs-string">"segments"</span>: [], <span class="hljs-string">"pass1_result"</span>: {}, ...},
+        config={<span class="hljs-string">"configurable"</span>: {<span class="hljs-string">"thread_id"</span>: call_id}}
+        <span class="hljs-comment">#                                      ↑</span>
+        <span class="hljs-comment">#                        thread_id ties checkpoints to this call</span>
+    )
+
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">WorkerSettings</span>:</span>
+    functions = [process_call]
+    max_jobs = <span class="hljs-number">3</span>          <span class="hljs-comment"># ARQ's concurrency control</span>
+    job_timeout = <span class="hljs-number">600</span>
+    max_tries = <span class="hljs-number">3</span>
+</code></pre>
+<p>One function. 6 lines. ARQ&#39;s entire integration with LangGraph.</p>
+<hr>
+<h2 id="8-alternatives-considered-and-rejected">8. Alternatives Considered and Rejected</h2>
+<h3 id="temporal-the-most-elegant-single-system-">Temporal — &quot;The Most Elegant Single System&quot;</h3>
+<p><strong>What it is:</strong> A durable workflow execution platform. One system that handles job queuing, pipeline orchestration, checkpointing, and retry — all at once. LangGraph and ARQ combined can be replaced entirely by Temporal.</p>
+<p><strong>Why it&#39;s genuinely better at scale:</strong></p>
+<p>Temporal&#39;s durability is fundamentally deeper than LangGraph checkpointing:</p>
+<ul>
+<li>LangGraph checkpoints to Postgres — if the Postgres connection drops during a write, you might lose the checkpoint</li>
+<li>Temporal&#39;s execution history is the source of truth — every activity&#39;s result is stored in Temporal&#39;s own database before proceeding. Crash anywhere, at any moment, and Temporal resumes automatically</li>
+</ul>
+<pre><code class="lang-python"><span class="hljs-comment"># Temporal — everything in one place</span>
+<span class="hljs-meta">@workflow.defn</span>
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">SignalPipeline</span>:</span>
+<span class="hljs-meta">    @workflow.run</span>
+    <span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span><span class="hljs-params">(self, call_id: str)</span>:</span>
+        segments = <span class="hljs-keyword">await</span> workflow.execute_activity(preprocess, call_id)
+        pass1 = <span class="hljs-keyword">await</span> workflow.execute_activity(run_pass1, segments)
+
+        group_a, group_b, group_c, group_e = <span class="hljs-keyword">await</span> asyncio.gather(
+            workflow.execute_activity(run_group_a, pass1),
+            workflow.execute_activity(run_group_b, pass1),
+            workflow.execute_activity(run_group_c, pass1),
+            workflow.execute_activity(run_group_e, pass1),
+        )
+        <span class="hljs-keyword">await</span> workflow.execute_activity(translate, [group_a, group_b, group_c, group_e])
+</code></pre>
+<p><strong>Why we are not choosing it for Phase 1:</strong></p>
+<ol>
+<li><strong>Infrastructure overhead.</strong> Temporal requires running a Temporal server (or paying for Temporal Cloud at ~$25-50/month). At pre-seed, adding a new stateful service to operate is real risk.</li>
+<li><strong>Learning curve.</strong> Temporal has concepts (workflows, activities, signals, queries) that take time to internalize correctly. Phase 1 needs to ship fast.</li>
+<li><strong>Overkill for a 3-stage pipeline.</strong> Pass1 → parallel groups → translate is simple enough that ARQ + LangGraph handles it without the overhead.</li>
+</ol>
+<p><strong>When to migrate to Temporal:</strong> Phase 2-3, when deal-level workflows need to stay alive across days or weeks as a deal progresses through multiple calls. A deal workflow that spans 3 weeks across 8 calls is exactly what Temporal was designed for.</p>
+<hr>
+<h3 id="crewai-wrong-abstraction-entirely-">CrewAI — &quot;Wrong Abstraction Entirely&quot;</h3>
+<p><strong>What it is:</strong> A multi-agent framework where autonomous agents with defined roles collaborate to complete tasks.</p>
+<p><strong>Why we considered it:</strong> LLMs + defined roles + parallel work sounds similar to Signal&#39;s framework groups.</p>
+<p><strong>Why it is rejected:</strong></p>
+<p>Signal&#39;s pipeline is <strong>deterministic</strong>. The same steps run in the same order on every call. There is no decision to make about what to do next — preprocess always runs first, pass1 always runs second, groups always run third.</p>
+<p>CrewAI is designed for <strong>autonomous</strong> pipelines where the LLM decides what to do next — which tool to call, which agent to delegate to. This is the opposite of what Signal needs.</p>
+<p>Concretely:</p>
+<ul>
+<li>CrewAI agents make decisions → Signal needs structured, reproducible outputs</li>
+<li>CrewAI&#39;s structured output story is weak → Signal requires Pydantic schema enforcement on every framework output</li>
+<li>CrewAI adds agent prompts, role definitions, memory management → none of this maps to Signal&#39;s frameworks</li>
+<li>CrewAI has no checkpointing → Signal needs resume-on-crash</li>
+</ul>
+<p>CrewAI would require fighting the framework to get deterministic behavior. <strong>Wrong tool.</strong></p>
+<hr>
+<h3 id="langchain-as-llm-abstraction-layer-unnecessary-indirection-">LangChain (as LLM abstraction layer) — &quot;Unnecessary Indirection&quot;</h3>
+<p><strong>What it is:</strong> A framework providing abstractions over LLM providers — chains, prompt templates, output parsers, memory, agents.</p>
+<p><strong>Why we rejected it:</strong></p>
+<p>The PRD correctly specifies calling Anthropic and OpenAI SDKs directly. Adding LangChain as a wrapper provides:</p>
+<ul>
+<li>A unified interface across providers ✓</li>
+</ul>
+<p>At the cost of:</p>
+<ul>
+<li>Extra latency on every LLM call (LangChain adds processing overhead)</li>
+<li>Instructor (which Signal uses for structured outputs) works best with direct SDK calls</li>
+<li>LangChain&#39;s abstractions break or behave unexpectedly when Anthropic/OpenAI release new features</li>
+<li>Debugging becomes: &quot;is this a Signal bug, a LangChain bug, or an Anthropic bug?&quot;</li>
+</ul>
+<p><strong>Decision: call Anthropic and OpenAI SDKs directly. Use Instructor for structured outputs. LangGraph for orchestration only — no LangChain elsewhere.</strong></p>
+<hr>
+<h3 id="modal-best-developer-experience-wrong-stage-">Modal — &quot;Best Developer Experience, Wrong Stage&quot;</h3>
+<p><strong>What it is:</strong> A serverless compute platform for ML workloads. Define a Python function, decorate it with <code>@modal.function</code>, Modal handles scaling, containers, and execution.</p>
+<p><strong>Why it is compelling:</strong></p>
+<ul>
+<li>Zero infrastructure management — no workers to run, no Redis to manage for queuing</li>
+<li>Auto-scaling: 1 user or 1,000 users, same code</li>
+<li>Pay per second of compute used, not per server</li>
+</ul>
+<p><strong>Why we are not choosing it for Phase 1:</strong></p>
+<ol>
+<li><strong>Vendor lock-in.</strong> Signal&#39;s core processing pipeline becomes dependent on Modal&#39;s platform. If Modal has an outage, Signal cannot process calls. If Modal raises prices, Signal has no leverage.</li>
+<li><strong>Cost at scale.</strong> Modal&#39;s per-second pricing is economical at low volume but more expensive than running your own workers at 1,000+ calls/month.</li>
+<li><strong>Unnecessary at pre-seed.</strong> A single Hetzner VPS ($20/month) running ARQ workers handles Signal&#39;s Phase 1 load comfortably.</li>
+</ol>
+<p><strong>When to reconsider Modal:</strong> Phase 4-5, when enterprise customers create unpredictable traffic spikes and auto-scaling becomes genuinely valuable.</p>
+<hr>
+<h3 id="prefect-good-observability-redundant-layer-">Prefect — &quot;Good Observability, Redundant Layer&quot;</h3>
+<p><strong>What it is:</strong> A Python-native workflow orchestration tool with a visual dashboard showing flow execution.</p>
+<p><strong>Why it was considered:</strong> Prefect&#39;s UI is genuinely good — you can see every workflow execution, every task, success/failure rates, run history.</p>
+<p><strong>Why rejected:</strong></p>
+<p>Signal already has Langfuse for LLM observability (the part that matters most). Adding Prefect would give a second observability layer for the pipeline coordination, which ARQ&#39;s built-in dashboard already covers adequately. Two monitoring systems for one pipeline is complexity without proportional benefit.</p>
+<hr>
+<h3 id="raw-python-asyncio-no-queue-library-simplest-possible-approach-">Raw Python + asyncio (No Queue Library) — &quot;Simplest Possible Approach&quot;</h3>
+<p><strong>What it is:</strong> Skip ARQ entirely. FastAPI receives uploads, spawns <code>asyncio.create_task()</code> for background processing, LangGraph handles the pipeline.</p>
+<p><strong>Why it fails for Signal:</strong></p>
+<p><code>asyncio.create_task()</code> runs in the same process as FastAPI. If the web server restarts (deployment, crash), all in-flight tasks are lost — with no way to recover them. There is no queue. There is no retry. There is no concurrency control.</p>
+<p>This is acceptable for a personal project with 1 user. It is not acceptable for a product with paying customers uploading calls they care about.</p>
+<p>ARQ&#39;s entire value is: jobs survive server restarts (they&#39;re in Redis), concurrency is controlled (max_jobs), and retries are automatic (max_tries). These are non-negotiable for Signal.</p>
+<hr>
+<h2 id="9-migration-path-phase-2-and-beyond">9. Migration Path — Phase 2 and Beyond</h2>
+<p>This stack is designed with forward compatibility as a primary constraint.</p>
+<h3 id="phase-2-deal-intelligence">Phase 2 — Deal Intelligence</h3>
+<p>Deal-level behavioral tracking requires analyzing multiple calls as a unit. With LangGraph:</p>
+<pre><code class="lang-python"><span class="hljs-comment"># A deal workflow references and aggregates multiple call pipelines</span>
+class DealState(TypedDict):
+    deal_id: str
+    call_ids: list[str]
+    call_results: list[dict]  <span class="hljs-comment"># results from each call's pipeline</span>
+    commitment_trajectory: list[float]
+    deal_health_score: float
+
+<span class="hljs-comment"># The deal pipeline runs after each new call is added to the deal</span>
+async def compute_trajectory_node(<span class="hljs-keyword">state</span>: DealState) -&gt; DealState:
+    scores = [extract_commitment_score(r) <span class="hljs-keyword">for</span> r <span class="hljs-keyword">in</span> <span class="hljs-keyword">state</span>[<span class="hljs-string">"call_results"</span>]]
+    trajectory = compute_trajectory(scores)
+    return {**<span class="hljs-keyword">state</span>, <span class="hljs-string">"commitment_trajectory"</span>: trajectory}
+</code></pre>
+<p>No architectural change. A new LangGraph workflow. Same ARQ queue.</p>
+<h3 id="phase-3-conditional-coaching-paths">Phase 3 — Conditional Coaching Paths</h3>
+<p>When rep baselines are established, certain frameworks should only run if the rep is below baseline:</p>
+<pre><code class="lang-python"><span class="hljs-comment"># LangGraph conditional edges — add this when Phase 3 ships</span>
+def route_after_baseline_check(<span class="hljs-keyword">state</span>: SignalState) -&gt; str:
+    if <span class="hljs-keyword">state</span>[<span class="hljs-string">"rep_below_baseline"</span>]:
+        return <span class="hljs-string">"deep_diagnostic_node"</span>   <span class="hljs-comment"># run additional frameworks</span>
+    return <span class="hljs-string">"translate_node"</span>             <span class="hljs-comment"># proceed normally</span>
+
+workflow.add_conditional_edges(
+    <span class="hljs-string">"baseline_check"</span>,
+    route_after_baseline_check,
+    {<span class="hljs-string">"deep_diagnostic_node"</span>: <span class="hljs-string">"deep_diagnostic_node"</span>, <span class="hljs-string">"translate_node"</span>: <span class="hljs-string">"translate_node"</span>}
+)
+</code></pre>
+<h3 id="phase-2-3-temporal-migration">Phase 2-3 — Temporal Migration</h3>
+<p>When deal workflows need to persist across days/weeks:</p>
+<ol>
+<li>Temporal is introduced for deal-level workflows only</li>
+<li>Individual call pipelines can stay on ARQ + LangGraph OR be ported to Temporal activities</li>
+<li>Migration is additive — Temporal sits alongside ARQ, not instead of it, until the team is confident</li>
+</ol>
+<h3 id="phase-5-real-time-streaming">Phase 5 — Real-Time Streaming</h3>
+<p>LangGraph&#39;s streaming API is already built for this:</p>
+<pre><code class="lang-python"><span class="hljs-comment"># Phase 1: invoke (wait for full result)</span>
+await pipeline.ainvoke(<span class="hljs-keyword">state</span>, config=config)
+
+<span class="hljs-comment"># Phase 5: stream (tokens as they arrive)</span>
+async <span class="hljs-keyword">for</span> chunk <span class="hljs-keyword">in</span> pipeline.astream(<span class="hljs-keyword">state</span>, config=config):
+    yield chunk  <span class="hljs-comment"># stream insights to frontend as generated</span>
+</code></pre>
+<p>One line change. No architectural rewrite.</p>
+<hr>
+<h2 id="10-cost-comparison">10. Cost Comparison</h2>
+<p>Both stacks have identical variable costs (LLM, ASR). The infrastructure costs differ slightly.</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>PRD (Celery)</th>
+<th>Recommended (ARQ)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Redis</td>
+<td>$0-10/month</td>
+<td>$0-10/month (same)</td>
+</tr>
+<tr>
+<td>Worker VPS (Celery/ARQ)</td>
+<td>$20-40/month</td>
+<td>$20-40/month (same)</td>
+</tr>
+<tr>
+<td>Flower (Celery monitor)</td>
+<td>$0 (open source, self-hosted)</td>
+<td>$0 (ARQ dashboard built-in)</td>
+</tr>
+<tr>
+<td>Temporal Cloud (Phase 2+)</td>
+<td>Not applicable</td>
+<td>$25-50/month</td>
+</tr>
+<tr>
+<td><strong>Total infrastructure delta</strong></td>
+<td><strong>Baseline</strong></td>
+<td><strong>+$0 Phase 1, +$25-50 Phase 2+</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Phase 1 cost is identical. The $25-50/month Temporal cost at Phase 2+ is offset by eliminated engineering time spent building and maintaining custom deal-level state management.</p>
+<hr>
+<h2 id="11-risk-analysis">11. Risk Analysis</h2>
+<h3 id="risks-of-the-recommended-stack-arq-langgraph-">Risks of the Recommended Stack (ARQ + LangGraph)</h3>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Likelihood</th>
+<th>Impact</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ARQ has fewer Stack Overflow answers than Celery</td>
+<td>Medium</td>
+<td>Low</td>
+<td>ARQ&#39;s codebase is ~1,000 lines — readable enough to debug directly. LangGraph community is large and growing.</td>
+</tr>
+<tr>
+<td>LangGraph API changes break the pipeline</td>
+<td>Low</td>
+<td>Medium</td>
+<td>Pin LangGraph version. Run promptfoo evals before upgrading. LangGraph is production-stable.</td>
+</tr>
+<tr>
+<td>LangGraph checkpointer schema migrations</td>
+<td>Low</td>
+<td>Low</td>
+<td>LangGraph checkpoint tables are separate from Signal&#39;s application tables. Migrations are isolated.</td>
+</tr>
+<tr>
+<td>Team unfamiliar with LangGraph</td>
+<td>Low</td>
+<td>Low</td>
+<td>Founder already knows LangGraph.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="risks-of-the-prd-stack-celery-manual-chains-">Risks of the PRD Stack (Celery + manual chains)</h3>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Likelihood</th>
+<th>Impact</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Celery async/await conflicts</td>
+<td>High</td>
+<td>High</td>
+<td>No clean mitigation — this is a fundamental Celery limitation</td>
+</tr>
+<tr>
+<td>Celery chord bugs (parallel fan-out/fan-in)</td>
+<td>Medium</td>
+<td>High</td>
+<td>Celery chords are notoriously fragile. Known issue in community.</td>
+</tr>
+<tr>
+<td>Manual <code>completed_at</code> logic has edge cases</td>
+<td>Medium</td>
+<td>Medium</td>
+<td>Requires extensive testing. Every new developer must understand the convention.</td>
+</tr>
+<tr>
+<td>8-queue debugging complexity</td>
+<td>High</td>
+<td>Medium</td>
+<td>Operational burden that grows as the team grows</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="12-final-decision-summary">12. Final Decision Summary</h2>
+<h3 id="recommended-stack-one-line-per-component">Recommended Stack — One Line Per Component</h3>
+<pre><code>FastAPI          →  API layer <span class="hljs-keyword">and</span> webhook handling
+ARQ + Redis      →  Job queue: who gets processed <span class="hljs-keyword">and</span> when
+LangGraph        →  Pipeline: what happens step <span class="hljs-keyword">by</span> step inside each job
+Instructor       →  Schema enforcement <span class="hljs-keyword">on</span> <span class="hljs-keyword">every</span> LLM output
+Anthropic SDK    →  Direct Claude API calls (no LangChain wrapper)
+OpenAI SDK       →  Direct GPT<span class="hljs-number">-4</span>o API calls (no LangChain wrapper)
+tenacity         →  Retry logic <span class="hljs-keyword">on</span> LLM calls within pipeline nodes
+Langfuse         →  LLM observability, cost tracking, prompt A/B testing
+promptfoo        →  Golden dataset evaluation, regression gate <span class="hljs-keyword">on</span> prompts
+Postgres         →  Application data + LangGraph checkpoint store (same DB)
+AWS S3           →  Audio <span class="hljs-built_in">file</span> storage
+Clerk            →  Authentication
+</code></pre><h3 id="what-we-are-not-using-and-why">What we are NOT using and why</h3>
+<pre><code>Celery           →  Sync-<span class="hljs-keyword">first</span>, async <span class="hljs-keyword">is</span> bolted <span class="hljs-keyword">on</span>, <span class="hljs-number">8</span>-queue complexity
+CrewAI           →  Wrong abstraction — agentic, Signal's pipeline <span class="hljs-keyword">is</span> deterministic
+LangChain        →  Unnecessary wrapper — breaks Instructor, adds latency
+Modal            →  Vendor lock-<span class="hljs-keyword">in</span>, wrong stage <span class="hljs-keyword">for</span> pre-seed
+Prefect          →  Redundant observability layer — Langfuse already covers <span class="hljs-keyword">it</span>
+Temporal         →  Phase <span class="hljs-number">2</span><span class="hljs-number">-3</span> consideration, overkill <span class="hljs-keyword">for</span> Phase <span class="hljs-number">1</span>
+</code></pre><h3 id="the-change-from-the-prd-in-one-sentence">The change from the PRD in one sentence</h3>
+<blockquote>
+<p>Replace Celery&#39;s 8-queue manual pipeline with ARQ (one queue, pure async) and LangGraph (automatic orchestration with built-in checkpointing) — same Redis, same everything else, dramatically less coordination code to write and maintain.</p>
+</blockquote>
+<hr>
+<p><em>This document should be read alongside Signal PRD v2.2. All decisions in this document that conflict with PRD v2.2 Section 5 (Decision #7) and Section 18 supersede those decisions for the intelligence layer.</em></p>
+<p><em>Frontend stack, auth, database schema, API design, and deployment infrastructure remain exactly as specified in the PRD.</em></p>
+</body></html>
