@@ -135,9 +135,9 @@ Wave 3A (New API - sequential, after Wave 2)
 Wave 3B (Integration Tests - after 3A completes)
 └── 3B: Write pipeline integration tests
 
-Wave 4 (Streamlit Integration - after Wave 3, parallel)
+Wave 4 (Streamlit Integration - after Wave 3, sequential)
 ├── 4A: Refactor streamlit_app to use real signalapp modules
-└── 4B: Add evidence linking and transcript sync
+└── 4B: Add evidence linking and transcript sync (after 4A)
 
 Wave 5 (Deployment - parallel with Wave 4)
 └── 5A: Add Dockerfile, docker-compose.yml, CI/CD
@@ -160,6 +160,7 @@ Each wave after completion: create SUMMARY.md in .planning/phases/01-core-intell
 
 <task type="auto">
 <name>Create pyproject.toml for signalapp package</name>
+<read_first>pyproject.toml</read_first>
 <files>pyproject.toml</files>
 <action>
 Create `pyproject.toml` at project root with:
@@ -253,6 +254,7 @@ Key decisions:
 
 <task type="auto">
 <name>Remove ASR adapters, S3 storage, transcription job, and ASR webhooks</name>
+<read_first>signalapp/adapters/asr/__init__.py</read_first>
 <files>
   - signalapp/adapters/asr/__init__.py
   - signalapp/adapters/asr/base.py
@@ -328,6 +330,7 @@ ASR adapter directory deleted. S3 storage directory deleted. `signalapp/api/webh
 
 <task type="auto">
 <name>Fix insight feedback not persisting to database</name>
+<read_first>signalapp/db/repository.py</read_first>
 <files>
   - signalapp/api/insights.py
   - signalapp/db/repository.py
@@ -462,6 +465,7 @@ Insight feedback is persisted to database. POST /api/v1/insights/{id}/feedback r
 
 <task type="auto">
 <name>Guard execute_groups_node against missing LLM credentials</name>
+<read_first>signalapp/pipeline/nodes/execute_groups.py</read_first>
 <files>signalapp/pipeline/nodes/execute_groups.py</files>
 <action>
 The `execute_groups_node` currently silently returns stub data when LLM credentials are missing. Add a guard at the top of the function that checks for LLM availability and fails explicitly.
@@ -544,6 +548,7 @@ Pipeline fails fast with explicit warning when no LLM is configured. No silent m
 
 <task type="auto">
 <name>Add POST /api/calls/paste-transcript endpoint</name>
+<read_first>signalapp/api/calls.py</read_first>
 <files>signalapp/api/calls.py</files>
 <action>
 Add a new endpoint `POST /api/calls/paste-transcript` that accepts a transcript body and metadata, stores it in the database, and enqueues the pipeline job.
@@ -767,6 +772,7 @@ POST /api/calls/paste-transcript accepts {rep_name, call_type, deal_name, transc
 
 <task type="auto">
 <name>Write integration tests for full pipeline execution</name>
+<read_first>signalapp/tests/integration/test_pipeline.py</read_first>
 <files>
   - signalapp/tests/integration/test_pipeline.py
   - signalapp/tests/conftest.py
@@ -1067,6 +1073,7 @@ All pipeline integration tests pass. Routing table completeness verified. Stub r
 
 <task type="auto">
 <name>Refactor streamlit_app.py to import from signalapp package</name>
+<read_first>streamlit_app.py</read_first>
 <files>streamlit_app.py</files>
 <action>
 The existing `streamlit_app.py` contains duplicated logic for routing, transcript parsing, and mock data generation. Refactor it to import and use the real `signalapp` package modules.
@@ -1194,6 +1201,7 @@ streamlit_app.py imports signalapp.domain.routing, signalapp.domain.framework, s
 
 <task type="auto">
 <name>Add clickable evidence timestamps that highlight transcript segments</name>
+<read_first>streamlit_app.py</read_first>
 <files>streamlit_app.py</files>
 <action>
 Add interactive evidence linking where clicking a timestamp in an insight card highlights the corresponding transcript segment.
@@ -1304,6 +1312,7 @@ Evidence timestamps are clickable and set active_segment_ts in session state. Tr
 
 <task type="auto">
 <name>Create Dockerfile, docker-compose.yml, and CI/CD workflow</name>
+<read_first>Dockerfile</read_first>
 <files>
   - Dockerfile
   - docker-compose.yml
@@ -1549,7 +1558,7 @@ docker run --rm signalapp-test python -c "import signalapp; print('OK')"
 <automated>docker build -t signalapp-test -f Dockerfile . 2>&1 | tail -20</automated>
 </verify>
 <done>
-Dockerfile builds successfully. docker-compose.yml starts Streamlit + Postgres. CI workflow passes. Deploy workflow tagged correctly. .streamlit/config.toml created.
+Dockerfile builds successfully. docker-compose.yml starts Streamlit + Postgres. FastAPI runs separately via `uvicorn signalapp.app.main:app --port 8000`. CI workflow passes. Deploy workflow tagged correctly. .streamlit/config.toml created.
 </done>
 </task>
 
@@ -1669,7 +1678,7 @@ Phase 1 is complete when:
 - [ ] streamlit_app.py imports signalapp modules without errors
 - [ ] Evidence timestamps are clickable and highlight transcript segments
 - [ ] Dockerfile builds successfully
-- [ ] docker-compose.yml starts the application
+- [ ] docker-compose.yml starts the application (FastAPI runs separately via `uvicorn signalapp.app.main:app --port 8000`)
 
 ---
 

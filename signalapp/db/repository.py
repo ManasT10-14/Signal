@@ -442,20 +442,41 @@ class InsightRepository:
     async def update_feedback(
         self, insight_id: uuid.UUID, feedback: str, feedback_at: datetime | None = None
     ) -> Insight | None:
-        """Update an insight's feedback."""
-        async for session in get_session():
+        """Update an insight's feedback with explicit session commit."""
+        async with session_scope() as session:
             result = await session.execute(select(Insight).where(Insight.id == insight_id))
             insight = result.scalar_one_or_none()
             if insight is None:
                 return None
+
+            feedback_time = feedback_at or datetime.utcnow()
             await session.execute(
                 update(Insight)
                 .where(Insight.id == insight_id)
-                .values(feedback=feedback, feedback_at=feedback_at or datetime.utcnow())
+                .values(feedback=feedback, feedback_at=feedback_time)
             )
-            insight.feedback = feedback
-            insight.feedback_at = feedback_at or datetime.utcnow()
-            return insight
+            await session.commit()
+            await session.refresh(insight)
+
+            # Return a detached copy with the updated values
+            return Insight(
+                id=insight.id,
+                call_id=insight.call_id,
+                analysis_run_id=insight.analysis_run_id,
+                framework_result_id=insight.framework_result_id,
+                priority_rank=insight.priority_rank,
+                is_top_insight=insight.is_top_insight,
+                framework_name=insight.framework_name,
+                severity=insight.severity,
+                confidence=insight.confidence,
+                headline=insight.headline,
+                explanation=insight.explanation,
+                evidence=insight.evidence,
+                coaching_recommendation=insight.coaching_recommendation,
+                feedback=insight.feedback,
+                feedback_at=insight.feedback_at,
+                created_at=insight.created_at,
+            )
 
 
 # ─── BaseMetric Repository ─────────────────────────────────────────────────────
