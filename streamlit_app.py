@@ -963,13 +963,22 @@ def page_call_review():
             st.session_state["view"] = "analyze"
             st.rerun()
 
+    # Initialize active segment state for transcript highlighting
+    if "active_segment_ts" not in st.session_state:
+        st.session_state.active_segment_ts = None
+
+    def set_active_segment(timestamp_ms: int):
+        """Set the active transcript segment for highlighting."""
+        st.session_state.active_segment_ts = timestamp_ms
+
     # Tab bar
-    tab_insights, tab_stats, tab_summary, tab_frameworks, tab_routing = st.tabs([
+    tab_insights, tab_stats, tab_summary, tab_frameworks, tab_routing, tab_transcript = st.tabs([
         "💡 Insights",
         "📊 Call Stats",
         "📝 Summary",
         "🔬 Frameworks",
         "🎛️ Routing Debug",
+        "📄 Transcript",
     ])
 
     # ── Insights Tab ──────────────────────────────────────────────────────────
@@ -990,7 +999,55 @@ def page_call_review():
             st.markdown(f"### Top Insights ({top_n})")
 
             for i, result in enumerate(sorted_results[:top_n]):
-                st.html(insight_card(result))
+                sev = result.get("severity", "yellow")
+                color, bg = SEVERITY_COLORS.get(sev, ("#6B7280", "#F3F4F6"))
+
+                # Render insight card using Streamlit components for interactivity
+                cols = st.columns([0.85, 0.15])
+                with cols[0]:
+                    sev_display = sev.upper()
+                    sev_color = {"red": "#DC2626", "orange": "#EA580C", "yellow": "#CA8A04", "green": "#16A34A"}.get(sev, "#6B7280")
+                    score = result.get("score")
+                    score_str = f"{score:.0f}" if score else "N/A"
+                    st.markdown(f"**{result.get('framework_name', '')}** `{sev_display}` · Score: **{score_str}**")
+
+                # Severity indicator
+                with cols[1]:
+                    st.markdown(f":{sev_color.replace('#', '')}[**{sev.upper()}**]")
+
+                st.markdown(f"**{result.get('headline', '')}**")
+                st.caption(result.get("explanation", ""))
+
+                # Evidence with clickable timestamps
+                for idx, ev in enumerate(result.get("evidence", [])[:3]):
+                    ts = ev.get("timestamp", "00:00")
+                    # Try to parse timestamp to milliseconds for highlighting
+                    try:
+                        parts = ts.split(":")
+                        ts_ms = int(parts[0]) * 60000 + int(parts[1]) * 1000
+                    except (ValueError, IndexError):
+                        ts_ms = 0
+
+                    ev_col1, ev_col2 = st.columns([0.15, 0.85])
+                    with ev_col1:
+                        if st.button(f"⏱️ {ts}", key=f"ev_{result.get('framework_name', 'insight')}_{i}_{idx}"):
+                            set_active_segment(ts_ms)
+                            st.rerun()
+                    with ev_col2:
+                        speaker = ev.get("speaker", "")
+                        quote = ev.get("quote", "")
+                        st.markdown(f"> **{speaker}:** \"{quote}\"")
+
+                # AIM note
+                if result.get("is_aim_null_finding"):
+                    st.markdown(":purple[**AIM null-finding:** absence is meaningful here]")
+
+                # Coaching recommendation
+                coaching = result.get("coaching_recommendation", "")
+                if coaching:
+                    st.info(f"💡 **Coaching:** {coaching}")
+
+                st.divider()
 
             # All results
             if len(sorted_results) > top_n:
@@ -1182,6 +1239,52 @@ def page_call_review():
         <strong>Summary:</strong> {len(active_frameworks)}/17 frameworks active · {len(active_groups)} groups running · ~25-40% cost reduction vs running all 17
         </div>
         """, unsafe_allow_html=True)
+
+    # ── Transcript Tab ──────────────────────────────────────────────────────────
+    with tab_transcript:
+        if not segments:
+            st.info("No transcript segments available.")
+        else:
+            # Clear highlight button
+            if st.session_state.active_segment_ts is not None:
+                if st.button("Clear highlight"):
+                    st.session_state.active_segment_ts = None
+                    st.rerun()
+
+            st.markdown(f"**{len(segments)} segments** — click a timestamp to highlight")
+
+            # Display transcript segments
+            for seg in segments:
+                is_active = seg.get("start_ms") == st.session_state.active_segment_ts
+
+                # Role color
+                role = seg.get("role", "unknown")
+                role_color = "#3B82F6" if role == "rep" else "#F59E0B"
+
+                # Build segment display
+                if is_active:
+                    st.markdown(
+                        f":[{seg.get('start_str', '00:00')}]({seg.get('start_ms', 0)}) "
+                        f"**:{role_color.replace('#', '')}[{seg.get('speaker', 'Unknown')}]** "
+                        f"{seg.get('text', '')}",
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown(
+                        "<div style='border-left: 3px solid #0D9488; background: #F0FDF4; padding: 8px; margin: 4px 0; border-radius: 4px;'></div>",
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    col_ts, col_text = st.columns([0.1, 0.9])
+                    ts_str = seg.get("start_str", "00:00")
+                    ts_ms = seg.get("start_ms", 0)
+                    with col_ts:
+                        if st.button(f"⏱️ {ts_str}", key=f"ts_{ts_ms}", help=f"Jump to {ts_str}"):
+                            set_active_segment(ts_ms)
+                    with col_text:
+                        st.markdown(
+                            f"**[{role_color.replace('#', '')}]{seg.get('speaker', 'Unknown')}:** {seg.get('text', '')}",
+                            unsafe_allow_html=True,
+                        )
 
 
 def page_routing_table():
