@@ -15,6 +15,7 @@ Usage:
 from __future__ import annotations
 
 import json
+import os
 import uuid
 import re
 from datetime import datetime
@@ -22,6 +23,40 @@ from typing import Optional
 
 import streamlit as st
 import pandas as pd
+
+# ─── signalapp Imports ───────────────────────────────────────────────────────────
+# Use real signalapp modules when available, fall back to local definitions for demo
+try:
+    from signalapp.domain.routing import (
+        route_frameworks as _sig_route_frameworks,
+        should_run_framework as _sig_should_run_framework,
+        Pass1GateSignals,
+        ROUTING_TABLE as _SIG_ROUTING_TABLE,
+        GROUP_MEMBERSHIP as _SIG_GROUP_MEMBERSHIP,
+        PINNED_FRAMEWORKS as _SIG_PINNED_FRAMEWORKS,
+    )
+    from signalapp.domain.framework import FRAMEWORK_REGISTRY as _SIG_FRAMEWORK_REGISTRY
+    from signalapp.api.calls import _parse_transcript as _sig_parse_transcript
+    SIGNAL_AVAILABLE = True
+except ImportError:
+    SIGNAL_AVAILABLE = False
+    Pass1GateSignals = None
+
+BACKEND_URL = os.environ.get("SIGNAL_BACKEND_URL", "http://localhost:8000")
+API_KEY = os.environ.get("SIGNAL_API_KEY", "")
+
+
+def check_backend_connection() -> bool:
+    """Check if FastAPI backend is reachable."""
+    import requests
+    try:
+        response = requests.get(
+            f"{BACKEND_URL}/health",
+            timeout=5,
+        )
+        return response.status_code == 200
+    except Exception:
+        return False
 
 # ─── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -1309,6 +1344,13 @@ def main():
                 st.rerun()
 
         st.markdown("---")
+
+        # Backend connection status
+        if check_backend_connection():
+            st.success("Backend: Connected")
+        else:
+            st.warning("Backend: Not connected. Set SIGNAL_BACKEND_URL env var.")
+
         st.markdown("""
         <div style="font-size:11px;color:rgba(255,255,255,0.6);line-height:1.6;">
         <strong>Signal v0.1.0 — Testing Harness</strong><br>
