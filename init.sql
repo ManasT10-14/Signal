@@ -1,0 +1,3 @@
+-- Initialize signal database
+-- This runs automatically when postgres container starts if POSTGRES_DB=signal
+-- Already handled by POSTGRES_DB env var in docker-compose

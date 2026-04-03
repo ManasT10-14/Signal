@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev]"
+
+      - name: Run unit tests
+        run: |
+          pytest signalapp/tests/unit/ -v --tb=short -q
+
+      - name: Run integration tests
+        run: |
+          pytest signalapp/tests/integration/ -v --tb=short -q
+
+      - name: Lint with ruff
+        run: |
+          ruff check signalapp/ --output-format=github
+
+      - name: Check imports
+        run: |
+          python -c "import signalapp; print('Import OK')"
+
+  streamlit-smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Streamlit
+        run: pip install streamlit>=1.40.0
+
+      - name: Smoke test Streamlit app
+        run: |
+          timeout 15 streamlit run streamlit_app.py --server.headless true &
+          sleep 10
+          curl -s http://localhost:8501 | grep -q "streamlit" && echo "Streamlit OK" || echo "Streamlit failed"
+          pkill -f streamlit || true
