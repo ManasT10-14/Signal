@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from signalapp.app.config import get_config, load_config
+from signalapp.app.config import get_config
 from signalapp.db.repository import init_db
 
 logger = logging.getLogger(__name__)
@@ -19,17 +19,13 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan — startup and shutdown."""
-    # Startup
     config = get_config()
-    if config.database_url:
-        await init_db(config.database_url)
-        logger.info("[startup] Database initialized")
+    if config.db_url:
+        await init_db(config.db_url)
+        logger.info("[startup] Database initialized: %s", config.db_url)
     else:
         logger.warning("[startup] No database URL — DB layer disabled")
-
     yield
-
-    # Shutdown
     logger.info("[shutdown] Application shutting down")
 
 
@@ -59,7 +55,7 @@ def create_app() -> FastAPI:
     from signalapp.api.calls import router as calls_router
     from signalapp.api.insights import router as insights_router
 
-    app.include_router(calls_router, prefix="/api/v1", tags=["calls"])
+    app.include_router(calls_router, prefix="/api/v1/calls", tags=["calls"])
     app.include_router(insights_router, prefix="/api/v1", tags=["insights"])
 
     # Health check

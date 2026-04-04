@@ -68,9 +68,12 @@ async def init_db(database_url: str | None = None) -> None:
 
 
 async def get_session() -> AsyncIterator[AsyncSession]:
-    """Get an async database session. Use as: async with get_session() as session:"""
+    """Get an async database session. Auto-initializes DB on first use."""
     if _session_factory is None:
-        raise RuntimeError("Database not initialized. Call init_db() first.")
+        # Lazy init: use config's db_url (always non-empty — falls back to SQLite)
+        from signalapp.app.config import get_config
+        config = get_config()
+        await init_db(config.db_url)
     async with _session_factory() as session:
         try:
             yield session
