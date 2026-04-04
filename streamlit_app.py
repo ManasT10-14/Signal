@@ -694,65 +694,59 @@ def severity_badge(severity: str):
     return f'<span style="background:{bg};color:{color};padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px">{severity}</span>'
 
 
-def insight_card(result: dict):
+def render_insight_card(result: dict):
+    """Render an insight card using native Streamlit components (no raw HTML)."""
     sev = result.get("severity", "yellow")
-    color, bg = SEVERITY_COLORS.get(sev, ("#6B7280", "#F3F4F6"))
-
-    evidence_html = ""
-    for ev in result.get("evidence", [])[:3]:
-        evidence_html += f'''
-        <div style="margin-top:6px;padding:6px 10px;background:white;border-radius:4px;font-size:12px;">
-            <span style="color:#9CA3AF;font-size:11px;">[{ev.get("timestamp","")}]</span>
-            <span style="font-weight:600;margin-left:6px;">{ev.get("speaker","")}:</span>
-            <span style="font-style:italic;color:#374151;">"{ev.get("quote","")}"</span>
-        </div>'''
-
-    coaching = result.get("coaching_recommendation", "")
-    coaching_html = f'''
-    <div style="margin-top:10px;padding:10px 12px;background:linear-gradient(135deg,#CCFBF1,#F0FDF4);border:1px solid #99F6E4;border-radius:6px;font-size:13px;">
-        <strong style="color:#0F766E;">💡 Coaching:</strong>
-        <span style="color:#065F46;">{coaching}</span>
-    </div>''' if coaching else ""
-
-    aim_note = ""
-    if result.get("is_aim_null_finding"):
-        aim_note = '<div style="margin-top:6px;font-size:11px;color:#6D28D9;font-style:italic;">🔮 AIM null-finding: absence is meaningful here</div>'
-
+    sev_upper = sev.upper()
+    sev_color = {"red": "🔴", "orange": "🟠", "yellow": "🟡", "green": "🟢"}.get(sev, "⚪")
     score = result.get("score")
-    score_str = f'<span style="float:right;font-size:22px;font-weight:800;color:{color};">{score:.0f}</span>' if score else '<span style="float:right;font-size:14px;color:#9CA3AF;">N/A</span>'
+    score_str = f"{score:.0f}" if score else "N/A"
 
-    return f"""
-    <div class="insight-card {sev}">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-            <div style="display:flex;align-items:center;gap:8px;">
-                {severity_badge(sev)}
-                <span style="font-size:13px;font-weight:600;color:#1F2937;">{result.get("framework_name","")}</span>
-            </div>
-            {score_str}
-        </div>
-        <div style="font-size:15px;font-weight:700;color:#111827;margin-bottom:6px;">{result.get("headline","")}</div>
-        <div style="font-size:13px;color:#4B5563;line-height:1.6;margin-bottom:8px;">{result.get("explanation","")}</div>
-        {evidence_html}
-        {aim_note}
-        {coaching_html}
-    </div>
-    """
+    # Header row
+    header_col1, header_col2 = st.columns([0.85, 0.15])
+    with header_col1:
+        st.markdown(f"**{result.get('framework_name', '')}** | {sev_color} {sev_upper} | Score: **{score_str}**")
+    with header_col2:
+        pass
+
+    st.markdown(f"**{result.get('headline', '')}**")
+    st.caption(result.get("explanation", ""))
+
+    # Evidence
+    for ev in result.get("evidence", [])[:3]:
+        ts = ev.get("timestamp", "00:00")
+        speaker = ev.get("speaker", "")
+        quote = ev.get("quote", "")
+        st.markdown(f"> `[{ts}]` **{speaker}:** \"{quote}\"")
+
+    # AIM note
+    if result.get("is_aim_null_finding"):
+        st.markdown(":purple[🔮 **AIM null-finding:** absence is meaningful here]")
+
+    # Coaching
+    coaching = result.get("coaching_recommendation", "")
+    if coaching:
+        st.info(f"💡 **Coaching:** {coaching}")
+
+    st.divider()
 
 
-def transcript_segment(seg: dict, active_ts: str = None):
+def render_transcript_segment(seg: dict, active_ts: str = None):
+    """Render a transcript segment using native Streamlit components."""
     role = seg.get("role", "unknown")
-    cls = "rep" if role == "rep" else "buyer"
-    speaker_cls = "rep" if role == "rep" else "buyer"
-    speaker_color = "#1D4ED8" if role == "rep" else "#92400E"
+    is_active = seg.get("start_str") == active_ts
 
-    active = 'style="border-left:3px solid #0D9488;background:#F0FDF4;"' if seg.get("start_str") == active_ts else ""
+    ts_str = seg.get("start_str", "00:00")
+    speaker = seg.get("speaker", "Unknown")
+    text = seg.get("text", "")
 
-    return f'''
-    <div class="segment {cls}" {active}>
-        <span class="ts">[{seg.get("start_str","")}]</span>
-        <span class="speaker {speaker_cls}" style="color:{speaker_color};">{seg.get("speaker","")}</span>
-        <span style="color:#374151;">{seg.get("text","")}</span>
-    </div>'''
+    role_color = "blue" if role == "rep" else "orange"
+    bg_style = "background: #F0FDF4; border-left: 3px solid #0D9488; padding: 8px; border-radius: 4px;" if is_active else ""
+
+    if bg_style:
+        st.markdown(f":blue[[{ts_str}] ]:blue[**{speaker}:**] {text}")
+    else:
+        st.markdown(f"[{ts_str}] **{speaker}:** {text}")
 
 
 # ─── Pages ────────────────────────────────────────────────────────────────────
@@ -814,41 +808,134 @@ def page_analyze():
     submitted = st.button("🚀 Run Analysis", type="primary", use_container_width=True)
 
     if submitted and (transcript_text or audio_uploaded):
-        with st.spinner("Running pipeline..."):
-            import time
-            time.sleep(1.5)  # Simulate processing
-
         # Use paste tab values if audio not uploaded
         final_transcript = transcript_text if not audio_uploaded else SAMPLE_TRANSCRIPT_DISCOVERY
         final_call_type = call_type if not audio_uploaded else call_type_audio
         final_rep = rep_name if not audio_uploaded else rep_name_audio
         final_deal = deal_name if not audio_uploaded else deal_name_audio
 
-        segments = parse_transcript(final_transcript)
-        signals = extract_signals(final_transcript, final_call_type)
-        active, routing_decisions = route_frameworks(final_call_type, signals)
-        active_groups = get_active_groups(active)
-        results = generate_mock_results(final_call_type, final_transcript)
-        metrics = compute_base_metrics(segments)
+        if not final_transcript.strip():
+            st.error("Please paste a transcript first.")
+        else:
+            with st.spinner("Sending to backend..."):
+                import requests
+                try:
+                    response = requests.post(
+                        f"{BACKEND_URL}/api/v1/calls/paste-transcript",
+                        json={
+                            "rep_name": final_rep or "Unknown",
+                            "call_type": final_call_type,
+                            "deal_name": final_deal or None,
+                            "transcript_text": final_transcript,
+                        },
+                        timeout=30,
+                    )
+                    response.raise_for_status()
+                    result_data = response.json()
+                    call_id = result_data.get("call_id")
+                    segments_count = result_data.get("segments_count", 0)
+                    st.session_state["backend_call_id"] = call_id
+                    st.session_state["backend_segments_count"] = segments_count
+                except requests.exceptions.ConnectionError:
+                    st.error(f"Could not connect to backend at {BACKEND_URL}. Is uvicorn running?")
+                    st.stop()
+                except requests.exceptions.HTTPError as e:
+                    st.error(f"Backend error: {e.response.status_code} — {e.response.text}")
+                    st.stop()
+                except Exception as e:
+                    st.error(f"Error: {str(e)}")
+                    st.stop()
 
-        # Store in session state
-        st.session_state["current_analysis"] = {
-            "call_type": final_call_type,
-            "rep_name": final_rep or "Unknown",
-            "deal_name": final_deal or "Unknown Deal",
-            "transcript": final_transcript,
-            "segments": segments,
-            "signals": signals,
-            "routing_decisions": routing_decisions,
-            "active_frameworks": active,
-            "active_groups": active_groups,
-            "results": results,
-            "metrics": metrics,
-        }
+            with st.spinner("Running pipeline (first call may take 10-30s)..."):
+                import time
+                # Poll for results (pipeline runs synchronously in memory mode)
+                max_wait = 60
+                start = time.time()
+                insights_data = None
+                while time.time() - start < max_wait:
+                    try:
+                        resp = requests.get(
+                            f"{BACKEND_URL}/api/v1/calls/{call_id}",
+                            timeout=10,
+                        )
+                        if resp.status_code == 200:
+                            call_data = resp.json()
+                            if call_data.get("processing_status") == "ready":
+                                # Fetch insights
+                                insights_resp = requests.get(
+                                    f"{BACKEND_URL}/api/v1/insights/call/{call_id}",
+                                    timeout=10,
+                                )
+                                if insights_resp.status_code == 200:
+                                    insights_data = insights_resp.json()
+                                break
+                            elif call_data.get("processing_status") == "failed":
+                                st.error("Pipeline failed. Check backend logs.")
+                                st.stop()
+                    except Exception:
+                        pass
+                    time.sleep(2)
 
-        st.success("✅ Analysis complete!")
-        st.session_state["view"] = "call_review"
-        st.rerun()
+                if insights_data is None:
+                    st.warning("Pipeline still processing. Results will refresh when ready.")
+                    st.session_state["view"] = "calls"
+                    st.rerun()
+
+            # Build segments from transcript for display
+            segments = parse_transcript(final_transcript)
+            signals = extract_signals(final_transcript, final_call_type)
+            active, routing_decisions = route_frameworks(final_call_type, signals)
+            active_groups = get_active_groups(active)
+            metrics = compute_base_metrics(segments)
+
+            # Convert API insights to the format used by the UI
+            results = {}
+            if insights_data and insights_data.get("insights"):
+                for idx, ins in enumerate(insights_data["insights"]):
+                    fw_id = idx + 1  # Map by insertion order
+                    # Derive severity from framework name if not provided
+                    sev = ins.get("severity", "yellow")
+                    score = ins.get("confidence", 0.75) * 100
+                    results[fw_id] = {
+                        "framework_id": f"FW-{fw_id:02d}",
+                        "framework_name": ins.get("framework_name", f"Framework {fw_id}"),
+                        "group": "B",
+                        "score": score,
+                        "severity": sev if sev in ("red", "orange", "yellow", "green") else "yellow",
+                        "confidence": ins.get("confidence", 0.75),
+                        "headline": ins.get("headline", ""),
+                        "explanation": ins.get("explanation", ""),
+                        "coaching_recommendation": ins.get("coaching_recommendation", ""),
+                        "evidence": [
+                            {
+                                "timestamp": f"{e.get('timestamp', 0) // 60000:02d}:{(e.get('timestamp', 0) % 60000) // 1000:02d}",
+                                "speaker": e.get("speaker", ""),
+                                "quote": e.get("quote", ""),
+                            }
+                            for e in (ins.get("evidence") or [])
+                        ],
+                        "is_aim_null_finding": False,
+                    }
+
+            # Store in session state
+            st.session_state["current_analysis"] = {
+                "call_type": final_call_type,
+                "rep_name": final_rep or "Unknown",
+                "deal_name": final_deal or "Unknown Deal",
+                "transcript": final_transcript,
+                "segments": segments,
+                "signals": signals,
+                "routing_decisions": routing_decisions,
+                "active_frameworks": active,
+                "active_groups": active_groups,
+                "results": results,
+                "metrics": metrics,
+                "from_backend": True,
+            }
+
+            st.success("✅ Analysis complete!")
+            st.session_state["view"] = "call_review"
+            st.rerun()
 
 
 def page_calls_list():
@@ -894,20 +981,20 @@ def page_calls_list():
 
         with cols[0]:
             title = f"**{c['deal']}**" if c["deal"] != "Unknown Deal" else f"**{c['rep']} — {c['type'].title()}**"
-            st.markdown(f"{title}", unsafe_allow_html=True)
+            st.markdown(title)
             st.caption(f"🔴 {c['insight']}")
         with cols[1]:
             st.markdown(c["rep"])
         with cols[2]:
-            st.markdown(f'<span class="call-type-badge {col_type}">{c["type"]}</span>', unsafe_allow_html=True)
+            st.markdown(f"`{c['type']}`")
         with cols[3]:
             st.markdown(c["date"])
         with cols[4]:
             st.markdown(c["duration"])
         with cols[5]:
-            status_cls = {"ready": "ready", "processing": "processing", "failed": "failed"}.get(c["status"], "processing")
-            dot = {"ready": "●", "processing": "◌", "failed": "✕"}.get(c["status"], "◌")
-            st.markdown(f'<span class="status-badge {status_cls}">{dot} {c["status"]}</span>', unsafe_allow_html=True)
+            status_map = {"ready": ("✅", "ready"), "processing": ("⏳", "processing"), "failed": ("❌", "failed")}
+            dot, status_cls = status_map.get(c["status"], ("◌", "processing"))
+            st.markdown(f"{dot} {c['status']}")
 
         st.markdown("---")
 
@@ -983,10 +1070,16 @@ def page_call_review():
 
     # ── Insights Tab ──────────────────────────────────────────────────────────
     with tab_insights:
+        from_backend = analysis.get("from_backend", False)
+        if not from_backend:
+            st.info("Running in demo mode — not connected to backend LLM pipeline.")
         # Filter to top results
         active_results = {k: v for k, v in results.items() if k in active_frameworks}
         if not active_results:
-            st.info("No framework results yet — running in mock mode without LLM configured.")
+            if from_backend:
+                st.info("No insights returned from pipeline yet. Try again once processing completes.")
+            else:
+                st.info("No framework results yet.")
         else:
             # Sort by severity then confidence
             sorted_results = sorted(
@@ -999,55 +1092,7 @@ def page_call_review():
             st.markdown(f"### Top Insights ({top_n})")
 
             for i, result in enumerate(sorted_results[:top_n]):
-                sev = result.get("severity", "yellow")
-                color, bg = SEVERITY_COLORS.get(sev, ("#6B7280", "#F3F4F6"))
-
-                # Render insight card using Streamlit components for interactivity
-                cols = st.columns([0.85, 0.15])
-                with cols[0]:
-                    sev_display = sev.upper()
-                    sev_color = {"red": "#DC2626", "orange": "#EA580C", "yellow": "#CA8A04", "green": "#16A34A"}.get(sev, "#6B7280")
-                    score = result.get("score")
-                    score_str = f"{score:.0f}" if score else "N/A"
-                    st.markdown(f"**{result.get('framework_name', '')}** `{sev_display}` · Score: **{score_str}**")
-
-                # Severity indicator
-                with cols[1]:
-                    st.markdown(f":{sev_color.replace('#', '')}[**{sev.upper()}**]")
-
-                st.markdown(f"**{result.get('headline', '')}**")
-                st.caption(result.get("explanation", ""))
-
-                # Evidence with clickable timestamps
-                for idx, ev in enumerate(result.get("evidence", [])[:3]):
-                    ts = ev.get("timestamp", "00:00")
-                    # Try to parse timestamp to milliseconds for highlighting
-                    try:
-                        parts = ts.split(":")
-                        ts_ms = int(parts[0]) * 60000 + int(parts[1]) * 1000
-                    except (ValueError, IndexError):
-                        ts_ms = 0
-
-                    ev_col1, ev_col2 = st.columns([0.15, 0.85])
-                    with ev_col1:
-                        if st.button(f"⏱️ {ts}", key=f"ev_{result.get('framework_name', 'insight')}_{i}_{idx}"):
-                            set_active_segment(ts_ms)
-                            st.rerun()
-                    with ev_col2:
-                        speaker = ev.get("speaker", "")
-                        quote = ev.get("quote", "")
-                        st.markdown(f"> **{speaker}:** \"{quote}\"")
-
-                # AIM note
-                if result.get("is_aim_null_finding"):
-                    st.markdown(":purple[**AIM null-finding:** absence is meaningful here]")
-
-                # Coaching recommendation
-                coaching = result.get("coaching_recommendation", "")
-                if coaching:
-                    st.info(f"💡 **Coaching:** {coaching}")
-
-                st.divider()
+                render_insight_card(result)
 
             # All results
             if len(sorted_results) > top_n:
@@ -1101,24 +1146,12 @@ def page_call_review():
 
         st.markdown("### AI Summary")
 
-        st.markdown("""
-        <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:16px;margin-bottom:16px;">
-        <div style="margin-bottom:12px;"><strong>RECAP</strong></div>
-        <div style="color:#374151;line-height:1.7;">
-        {recap}
-        </div>
-        </div>
-        """.format(recap=top_result.get("explanation", "Analysis in progress...") if top_result else "Analysis in progress..."))
+        st.info(f"**RECAP:** {top_result.get('explanation', 'Analysis in progress...') if top_result else 'Analysis in progress...'}")
 
         # Key decisions
         money_fw = results.get(4)
         if money_fw:
-            st.markdown("""
-            <div style="background:#FFF7ED;border:1px solid #FFEDD5;border-radius:8px;padding:14px;margin-bottom:12px;">
-            <div style="font-weight:700;margin-bottom:6px;">💰 Key Financial Signals</div>
-            <div style="color:#9A3412;">{detail}</div>
-            </div>
-            """.format(detail=money_fw.get("headline", "")))
+            st.warning(f"💰 **Key Financial Signals:** {money_fw.get('headline', '')}")
 
         # Coaching
         coaching_items = []
@@ -1127,14 +1160,7 @@ def page_call_review():
                 coaching_items.append(f"- **{r.get('framework_name','')}:** {r.get('coaching_recommendation','')}")
 
         if coaching_items:
-            st.markdown("""
-            <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:14px;">
-            <div style="font-weight:700;margin-bottom:8px;">💡 Coaching Recommendations</div>
-            <div style="color:#065F46;line-height:1.8;">
-            {items}
-            </div>
-            </div>
-            """.format(items="<br>".join(coaching_items[:3])))
+            st.success("💡 **Coaching Recommendations:**\n\n" + "\n".join(coaching_items[:3]))
 
     # ── Frameworks Tab ────────────────────────────────────────────────────────
     with tab_frameworks:
@@ -1152,30 +1178,19 @@ def page_call_review():
                 r = results.get(fw_id, {})
                 fw_info = FRAMEWORK_REGISTRY.get(fw_id, {})
                 sev = r.get("severity", "yellow")
-                color, _ = SEVERITY_COLORS.get(sev, ("#6B7280", "#F3F4F6"))
-
+                sev_emoji = {"red": "🔴", "orange": "🟠", "yellow": "🟡", "green": "🟢"}.get(sev, "⚪")
                 score = r.get("score")
                 score_str = f"{score:.0f}/100" if score else "—"
-
-                badge_color = "#22C55E" if not fw_info.get("is_scaffolded") else "#EAB308"
                 badge = "🟢" if not fw_info.get("is_scaffolded") else "🟡"
+                aim_mark = " 🔮" if r.get('is_aim_null_finding') else ""
 
-                st.markdown(f"""
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F3F4F6;">
-                    <div style="display:flex;align-items:center;gap:10px;">
-                        {badge}
-                        <span style="font-weight:600;">{fw_info.get('name', f'FW-{fw_id:02d}')}</span>
-                        <span style="font-size:12px;color:{color};font-weight:700;">{sev.upper()}</span>
-                        {f'<span style="font-size:11px;color:#6D28D9;font-style:italic;margin-left:6px;">🔮 AIM</span>' if r.get('is_aim_null_finding') else ''}
-                    </div>
-                    <div style="display:flex;align-items:center;gap:10px;">
-                        <span style="font-size:13px;color:#374151;">{r.get('headline', 'No result')[:50]}</span>
-                        <span style="background:{color}22;color:{color};padding:2px 10px;border-radius:10px;font-size:13px;font-weight:700;">{score_str}</span>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            st.markdown("")
+                fw_col1, fw_col2 = st.columns([0.6, 0.4])
+                with fw_col1:
+                    st.markdown(f"{badge} **{fw_info.get('name', f'FW-{fw_id:02d}')}** {sev_emoji} {sev.upper()}{aim_mark}")
+                    st.caption(f"  {r.get('headline', 'No result')[:60]}")
+                with fw_col2:
+                    st.metric("Score", score_str)
+                st.divider()
 
         # Show blocked/skipped frameworks
         with st.expander("🔴 Skipped Frameworks"):
@@ -1196,8 +1211,8 @@ def page_call_review():
             st.markdown("#### Pass1 Gate Signals")
             sig_data = [(k.replace("has_", "").replace("_", " ").title(), "✅ True" if v else "❌ False") for k, v in signals.items()]
             for label, val in sig_data:
-                color = "#16A34A" if "True" in val else "#DC2626"
-                st.markdown(f"- **{label}:** <span style='color:{color};font-weight:600;'>{val}</span>", unsafe_allow_html=True)
+                emoji = "✅" if "True" in val else "❌"
+                st.markdown(f"- **{label}:** {emoji} {val.replace('True','').replace('False','')}")
 
         with col_routing:
             st.markdown("#### Active Groups")
@@ -1211,7 +1226,7 @@ def page_call_review():
                 else:
                     st.markdown(f"- **Group {gid}** ({GROUP_NAMES.get(gid, '')}): ⏸️ Skipped (no active frameworks)")
 
-        st.markdown("---")
+        st.divider()
         st.markdown("#### All Routing Decisions")
 
         # Build routing table
@@ -1234,11 +1249,7 @@ def page_call_review():
 
         st.dataframe(routing_df, use_container_width=True, hide_index=True)
 
-        st.markdown(f"""
-        <div style="margin-top:16px;padding:12px;background:#F9FAFB;border-radius:8px;font-size:13px;">
-        <strong>Summary:</strong> {len(active_frameworks)}/17 frameworks active · {len(active_groups)} groups running · ~25-40% cost reduction vs running all 17
-        </div>
-        """, unsafe_allow_html=True)
+        st.info(f"📊 **Summary:** {len(active_frameworks)}/17 frameworks active · {len(active_groups)} groups running · ~25-40% cost reduction vs running all 17")
 
     # ── Transcript Tab ──────────────────────────────────────────────────────────
     with tab_transcript:
@@ -1256,35 +1267,22 @@ def page_call_review():
             # Display transcript segments
             for seg in segments:
                 is_active = seg.get("start_ms") == st.session_state.active_segment_ts
-
-                # Role color
                 role = seg.get("role", "unknown")
-                role_color = "#3B82F6" if role == "rep" else "#F59E0B"
+                role_emoji = "🔵" if role == "rep" else "🟠"
+                ts_str = seg.get("start_str", "00:00")
+                ts_ms = seg.get("start_ms", 0)
+                speaker = seg.get("speaker", "Unknown")
+                text = seg.get("text", "")
 
-                # Build segment display
                 if is_active:
-                    st.markdown(
-                        f":[{seg.get('start_str', '00:00')}]({seg.get('start_ms', 0)}) "
-                        f"**:{role_color.replace('#', '')}[{seg.get('speaker', 'Unknown')}]** "
-                        f"{seg.get('text', '')}",
-                        unsafe_allow_html=True,
-                    )
-                    st.markdown(
-                        "<div style='border-left: 3px solid #0D9488; background: #F0FDF4; padding: 8px; margin: 4px 0; border-radius: 4px;'></div>",
-                        unsafe_allow_html=True,
-                    )
+                    st.markdown(f"**[⏱️ {ts_str}]** {role_emoji} **{speaker}:** {text}")
                 else:
-                    col_ts, col_text = st.columns([0.1, 0.9])
-                    ts_str = seg.get("start_str", "00:00")
-                    ts_ms = seg.get("start_ms", 0)
+                    col_ts, col_text = st.columns([0.12, 0.88])
                     with col_ts:
-                        if st.button(f"⏱️ {ts_str}", key=f"ts_{ts_ms}", help=f"Jump to {ts_str}"):
+                        if st.button(f"⏱️", key=f"ts_{ts_ms}", help=f"Jump to {ts_str}"):
                             set_active_segment(ts_ms)
                     with col_text:
-                        st.markdown(
-                            f"**[{role_color.replace('#', '')}]{seg.get('speaker', 'Unknown')}:** {seg.get('text', '')}",
-                            unsafe_allow_html=True,
-                        )
+                        st.markdown(f"{role_emoji} **{speaker}:** {text}")
 
 
 def page_routing_table():
