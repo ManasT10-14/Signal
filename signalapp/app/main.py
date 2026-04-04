@@ -58,11 +58,9 @@ def create_app() -> FastAPI:
     # Include routers
     from signalapp.api.calls import router as calls_router
     from signalapp.api.insights import router as insights_router
-    from signalapp.api.webhooks import router as webhooks_router
 
     app.include_router(calls_router, prefix="/api/v1", tags=["calls"])
     app.include_router(insights_router, prefix="/api/v1", tags=["insights"])
-    app.include_router(webhooks_router, prefix="/api/v1", tags=["webhooks"])
 
     # Health check
     @app.get("/health")
