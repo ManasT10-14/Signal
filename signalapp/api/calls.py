@@ -206,15 +206,17 @@ async def paste_transcript(
     )
 
     # Enqueue pipeline job (runs in-process for memory mode)
+    pipeline_error = None
     try:
         await run_pipeline_job({}, str(call.id))
     except Exception as e:
-        # Pipeline job enqueued or ran; call is created
-        pass
+        pipeline_error = str(e)
+        import logging
+        logging.getLogger(__name__).exception(f"Pipeline job failed for call {call.id}: {e}")
 
     return PasteTranscriptResponse(
         call_id=str(call.id),
-        status="processing",
+        status="failed" if pipeline_error else "processing",
         segments_count=len(segments),
     )
 

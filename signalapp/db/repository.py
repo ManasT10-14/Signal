@@ -164,6 +164,7 @@ class CallRepository:
             await session.execute(
                 update(Call).where(Call.id == call_id).values(processing_status=status)
             )
+            await session.commit()
 
 
 # ─── Transcript Repository ───────────────────────────────────────────────────────

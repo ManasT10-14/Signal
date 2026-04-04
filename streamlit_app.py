@@ -851,6 +851,7 @@ def page_analyze():
                 # Poll for results (pipeline runs synchronously in memory mode)
                 max_wait = 60
                 start = time.time()
+                last_status = "unknown"
                 insights_data = None
                 while time.time() - start < max_wait:
                     try:
@@ -858,9 +859,14 @@ def page_analyze():
                             f"{BACKEND_URL}/api/v1/calls/{call_id}",
                             timeout=10,
                         )
+                        if resp.status_code == 404:
+                            # Call not yet committed — keep polling
+                            time.sleep(2)
+                            continue
                         if resp.status_code == 200:
                             call_data = resp.json()
-                            if call_data.get("processing_status") == "ready":
+                            last_status = call_data.get("processing_status", "unknown")
+                            if last_status == "ready":
                                 # Fetch insights
                                 insights_resp = requests.get(
                                     f"{BACKEND_URL}/api/v1/insights/call/{call_id}",
@@ -869,15 +875,18 @@ def page_analyze():
                                 if insights_resp.status_code == 200:
                                     insights_data = insights_resp.json()
                                 break
-                            elif call_data.get("processing_status") == "failed":
-                                st.error("Pipeline failed. Check backend logs.")
+                            elif last_status == "failed":
+                                st.error("Pipeline failed. Check backend logs for details.")
                                 st.stop()
+                        time.sleep(2)
                     except Exception:
                         pass
-                    time.sleep(2)
 
                 if insights_data is None:
-                    st.warning("Pipeline still processing. Results will refresh when ready.")
+                    if last_status == "processing":
+                        st.info("Pipeline still running. The call has been saved — refresh the Calls list to check back later.")
+                    else:
+                        st.warning("Could not fetch results. Please check the backend logs.")
                     st.session_state["view"] = "calls"
                     st.rerun()
 
