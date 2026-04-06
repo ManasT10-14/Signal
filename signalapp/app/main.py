@@ -38,11 +38,21 @@ async def lifespan(app: FastAPI):
     """Application lifespan — startup and shutdown."""
     _setup_gcp_credentials()
     config = get_config()
-    if config.db_url:
-        await init_db(config.db_url)
-        logger.info("[startup] Database initialized: %s", config.db_url)
+    db_url = config.db_url
+    logger.info("[startup] DB URL resolved to: %s", db_url)
+    if db_url and "://" in db_url:
+        try:
+            await init_db(db_url)
+            logger.info("[startup] Database initialized: %s", db_url)
+        except Exception as e:
+            # If configured URL fails, fall back to SQLite
+            fallback = "sqlite+aiosqlite:///./signal_dev.db"
+            logger.warning("[startup] DB init failed with '%s': %s. Falling back to %s", db_url, e, fallback)
+            await init_db(fallback)
     else:
-        logger.warning("[startup] No database URL — DB layer disabled")
+        fallback = "sqlite+aiosqlite:///./signal_dev.db"
+        logger.warning("[startup] No valid DB URL, using fallback: %s", fallback)
+        await init_db(fallback)
     yield
     logger.info("[shutdown] Application shutting down")
 
