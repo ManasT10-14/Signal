@@ -1,8 +1,18 @@
-# Environment
+# ── Secrets & Credentials ──
 .env
 .env.local
+.env.production
+.env.staging
+*.key
+*.pem
+*.crt
+*.p12
+*credentials*.json
+*service-account*.json
+*-key.json
+gcloud-*.json
 
-# Python
+# ── Python ──
 __pycache__/
 *.py[cod]
 *.so
@@ -13,30 +23,46 @@ dist/
 *.egg-info/
 venv/
 .venv/
-
-# Signal/SQLite dev DB
-*.db
-signal_dev.db
-
-# Byte-compiled / optimized / DLL files
 *.pyc
 *.pyo
 
-# Distribution / packaging
-.Python
+# ── Database ──
+*.db
+signal_dev.db
+*.sqlite
+*.sqlite3
 
-# IDE
+# ── IDE ──
 .idea/
 .vscode/
 *.swp
 *.swo
 
-# OS
+# ── OS ──
 .DS_Store
 Thumbs.db
 
-# Langfuse
+# ── Claude Code ──
+.claude/memory/
+.claude/settings.local.json
+.claude/plans/
+.claude/handoffs/
+
+# ── Langfuse ──
 .langfuse/
 
-# ARQ / Redis backup
+# ── Redis ──
 *.rdb
+
+# ── Playwright ──
+.playwright-mcp/
+
+# ── Test artifacts ──
+*.png
+*.jpg
+htmlcov/
+.coverage
+.pytest_cache/
+
+# ── Streamlit secrets ──
+.streamlit/secrets.toml

@@ -16,9 +16,27 @@ from signalapp.db.repository import init_db
 logger = logging.getLogger(__name__)
 
 
+def _setup_gcp_credentials():
+    """Write GCP service account JSON from env var to file (for Railway/Cloud deployments)."""
+    import os, json
+    creds_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+    if creds_json and not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+        creds_path = "/tmp/gcp-service-account.json"
+        try:
+            # Validate it's real JSON
+            json.loads(creds_json)
+            with open(creds_path, "w") as f:
+                f.write(creds_json)
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
+            logger.info("[startup] GCP credentials written to %s", creds_path)
+        except Exception as e:
+            logger.error("[startup] Failed to write GCP credentials: %s", e)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan — startup and shutdown."""
+    _setup_gcp_credentials()
     config = get_config()
     if config.db_url:
         await init_db(config.db_url)
@@ -56,7 +74,7 @@ def create_app() -> FastAPI:
     from signalapp.api.insights import router as insights_router
 
     app.include_router(calls_router, prefix="/api/v1/calls", tags=["calls"])
-    app.include_router(insights_router, prefix="/api/v1", tags=["insights"])
+    app.include_router(insights_router, prefix="/api/v1/insights", tags=["insights"])
 
     # Health check
     @app.get("/health")
