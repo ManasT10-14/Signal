@@ -40,11 +40,9 @@ async def get_current_user_id(
     Phase 2: JWT-based auth with org_id context.
     """
     if not authorization:
-        # Development mode: allow unauthenticated access
-        config = get_config()
-        if config.environment == "development":
-            # Return a default dev org
-            return uuid.UUID("00000000-0000-0000-0000-000000000001")
+        # Phase 1: No auth system — allow unauthenticated access with default user
+        # Phase 2: Replace with JWT/OAuth validation
+        return uuid.UUID("00000000-0000-0000-0000-000000000001")
 
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
