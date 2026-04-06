@@ -7,10 +7,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-EXPOSE 8000
-
 ENV SIGNAL_ENV=production \
     QUEUE_MODE=memory \
-    SQLITE_URL=sqlite+aiosqlite:///./signal_dev.db
+    SQLITE_URL=sqlite+aiosqlite:///./signal_dev.db \
+    PORT=8000
 
-CMD uvicorn signalapp.app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+CMD python -c "import os; os.system(f'uvicorn signalapp.app.main:app --host 0.0.0.0 --port {os.environ.get(\"PORT\", \"8000\")}')"
