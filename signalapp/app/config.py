@@ -42,8 +42,10 @@ class AppConfig:
 
     @property
     def db_url(self) -> str:
-        """Return the active database URL."""
-        return self.database_url or self.sqlite_url
+        """Return the active database URL. Only use database_url if it looks valid."""
+        if self.database_url and "://" in self.database_url:
+            return self.database_url
+        return self.sqlite_url
 
     # ── Queue ────────────────────────────────────────────────────────────────
     # QUEUE_MODE=memory (dev) or QUEUE_MODE=redis (production)
