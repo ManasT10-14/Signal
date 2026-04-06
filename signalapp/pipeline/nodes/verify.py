@@ -4,17 +4,33 @@ Verification node — 7-gate quality checks on framework results.
 Each gate validates a quality criterion. Results with low scores
 are flagged or downgraded. This runs after framework execution
 and before insight generation.
+
+Intelligence layer features:
+  - Quote fuzzy matching against transcript (Gate 2)
+  - Segment ID validation (Gate 2)
+  - Timestamp resolution from DB (Gate 2)
+  - Calibrated confidence scoring (Gate 4)
+  - Minimum evidence requirements with auto-downgrade (Gate 3)
 """
 from __future__ import annotations
 
+import logging
+
+from signalapp.domain.framework import normalize_severity
+from signalapp.pipeline.intelligence.quote_verify import verify_evidence_list
+from signalapp.pipeline.intelligence.confidence import (
+    compute_calibrated_confidence,
+    compute_cross_framework_agreement,
+)
 from signalapp.pipeline.state import PipelineState
 
+logger = logging.getLogger(__name__)
 
 VERIFICATION_GATES = [
     "gate_evidence_presence",      # Gate 1: Evidence exists
-    "gate_citation_quality",       # Gate 2: Citations are verbatim
-    "gate_severity_consistency",   # Gate 3: Severity matches evidence
-    "gate_confidence_calibration", # Gate 4: Confidence matches evidence quality
+    "gate_citation_quality",       # Gate 2: Citations are verbatim + segment validation
+    "gate_severity_consistency",   # Gate 3: Severity matches evidence + auto-downgrade
+    "gate_confidence_calibration", # Gate 4: Calibrated confidence scoring
     "gate_null_handling",          # Gate 5: AIM null findings handled correctly
     "gate_coherence",              # Gate 6: Output is internally consistent
     "gate_completeness",           # Gate 7: All required fields present
@@ -23,21 +39,23 @@ VERIFICATION_GATES = [
 
 async def verify_node(state: PipelineState) -> dict:
     """
-    Run 7-gate verification on framework results.
+    Run 7-gate verification on framework results with intelligence layer.
 
-    Inputs: framework_results
+    Inputs: framework_results, transcript_segments
     Outputs: verified_insights (preliminary), verification_flags
-
-    Each gate scores a framework result and downgrades severity / flags for human review.
     """
     framework_results = state["framework_results"]
+    transcript_segments = state.get("transcript_segments", [])
     call_id = state["call_id"]
+
+    # Build segment lookup for validation
+    valid_segment_ids = {seg.get("segment_id") for seg in transcript_segments if seg.get("segment_id")}
+    segment_lookup = {seg.get("segment_id"): seg for seg in transcript_segments if seg.get("segment_id")}
 
     verified_insights = []
     verification_flags = []
 
     for fw_id, result in framework_results.items():
-        # framework_results values are now dicts (serialized FrameworkOutput)
         evidence = result.get("evidence", [])
         is_aim_null = result.get("is_aim_null_finding", False)
         confidence = result.get("confidence", 0.0)
@@ -45,17 +63,14 @@ async def verify_node(state: PipelineState) -> dict:
         explanation = result.get("explanation", "")
         coaching = result.get("coaching_recommendation", "")
         severity_val = result.get("severity", "green")
-        framework_name = result.get("framework_name", f"Framework {fw_id}")
+        from signalapp.domain.frameworks import get_framework_name
+        framework_name = result.get("framework_name") or get_framework_name(fw_id)
         aim_output = result.get("aim_output")
         raw_analysis = result.get("raw_analysis", {})
 
-        # Handle severity (may be string or enum)
-        if hasattr(severity_val, "value"):
-            severity_str = severity_val.value
-        else:
-            severity_str = str(severity_val)
+        severity_str = normalize_severity(severity_val)
 
-        # Gate 1: Evidence presence
+        # ── Gate 1: Evidence presence ────────────────────────────────────────
         if not evidence and not is_aim_null:
             verification_flags.append({
                 "fw_id": fw_id,
@@ -64,39 +79,75 @@ async def verify_node(state: PipelineState) -> dict:
                 "message": "No evidence provided but not marked as AIM null",
             })
 
-        # Gate 2: Citation quality — verify evidence citations are verbatim from transcript
+        # ── Gate 2: Citation quality + segment validation + quote verification ─
+        # Validate segment IDs
+        validated_evidence = []
         for e in evidence:
-            quote = e.get("quote") or e.get("text_excerpt", "")
-            if quote:
-                # Check if quote is short (less than 10 chars) or looks fabricated
-                if len(quote.strip()) < 10:
-                    verification_flags.append({
-                        "fw_id": fw_id,
-                        "gate": "gate_citation_quality",
-                        "severity": "warning",
-                        "message": f"Evidence quote is suspiciously short: '{quote[:20]}...'",
-                    })
-                # Check for generic/non-specific quotes
-                generic_phrases = ["example", "something", "stuff", "things"]
-                if quote.lower().strip() in generic_phrases:
-                    verification_flags.append({
-                        "fw_id": fw_id,
-                        "gate": "gate_citation_quality",
-                        "severity": "warning",
-                        "message": f"Evidence quote appears generic: '{quote}'",
-                    })
+            ev = dict(e) if isinstance(e, dict) else {"segment_id": getattr(e, "segment_id", ""),
+                                                       "start_time_ms": getattr(e, "start_time_ms", 0),
+                                                       "speaker": getattr(e, "speaker", ""),
+                                                       "text_excerpt": getattr(e, "text_excerpt", "")}
+            seg_id = ev.get("segment_id", "")
+            if seg_id and seg_id not in valid_segment_ids:
+                verification_flags.append({
+                    "fw_id": fw_id,
+                    "gate": "gate_citation_quality",
+                    "severity": "warning",
+                    "message": f"Invalid segment_id: {seg_id} — hallucinated reference removed",
+                })
+                continue
+            # Resolve timestamp from DB if segment exists
+            if seg_id and seg_id in segment_lookup:
+                seg = segment_lookup[seg_id]
+                ev["timestamp"] = seg.get("start_time_ms", 0)
+                ev["start_time_ms"] = seg.get("start_time_ms", 0)
+                if not ev.get("speaker"):
+                    ev["speaker"] = seg.get("speaker_name", "")
+            validated_evidence.append(ev)
 
-        # Gate 3: Severity consistency — verify severity matches evidence quality
-        # Red severity should have strong evidence
-        if severity_str == "red" and len(evidence) < 2 and not is_aim_null:
+        # Run fuzzy quote verification on validated evidence
+        verified_ev = verify_evidence_list(validated_evidence, transcript_segments)
+
+        # Compute average quote match score for confidence calibration
+        match_scores = [e.get("quote_match_score", 0.0) for e in verified_ev if e.get("quote_match_score")]
+        avg_quote_match = sum(match_scores) / len(match_scores) if match_scores else 0.0
+
+        # Flag suspiciously short quotes
+        for e in verified_ev:
+            quote = e.get("quote") or e.get("text_excerpt", "")
+            if quote and len(quote.strip()) < 10:
+                verification_flags.append({
+                    "fw_id": fw_id,
+                    "gate": "gate_citation_quality",
+                    "severity": "info",
+                    "message": f"Evidence quote is very short: '{quote[:20]}'",
+                })
+
+        # ── Gate 3: Severity consistency + auto-downgrade ────────────────────
+        verified_count = len(verified_ev)
+
+        # RED severity requires 2+ verified evidence items
+        if severity_str == "red" and verified_count < 2 and not is_aim_null:
             verification_flags.append({
                 "fw_id": fw_id,
                 "gate": "gate_severity_consistency",
-                "severity": "warning",
-                "message": "RED severity with fewer than 2 evidence items — may be overstating",
+                "severity": "downgrade",
+                "message": f"RED downgraded to ORANGE — only {verified_count} verified evidence items (need 2+)",
             })
+            severity_str = "orange"
+
+        # ORANGE severity requires at least 1 verified evidence item
+        if severity_str == "orange" and verified_count == 0 and not is_aim_null:
+            verification_flags.append({
+                "fw_id": fw_id,
+                "gate": "gate_severity_consistency",
+                "severity": "downgrade",
+                "message": "ORANGE downgraded to YELLOW — no verified evidence",
+            })
+            severity_str = "yellow"
+
         # Green severity should not have strong negative evidence in explanation
-        if severity_str == "green" and "concern" in explanation.lower() or "issue" in explanation.lower():
+        if severity_str == "green" and ("concern" in explanation.lower() or "issue" in explanation.lower()):
             if "minor" not in explanation.lower() and "minimal" not in explanation.lower():
                 verification_flags.append({
                     "fw_id": fw_id,
@@ -105,25 +156,27 @@ async def verify_node(state: PipelineState) -> dict:
                     "message": "GREEN severity but explanation mentions concerns — verify alignment",
                 })
 
-        # Gate 4: Confidence calibration
-        # If confidence is very high but evidence is thin, flag it
-        if confidence > 0.85 and len(evidence) == 0 and not is_aim_null:
-            verification_flags.append({
-                "fw_id": fw_id,
-                "gate": "gate_confidence_calibration",
-                "severity": "warning",
-                "message": f"High confidence ({confidence}) but no evidence",
-            })
-        # Low confidence but high severity is also suspicious
-        if confidence < 0.5 and severity_str in ("red", "orange"):
+        # ── Gate 4: Calibrated confidence ────────────────────────────────────
+        cross_agreement = compute_cross_framework_agreement(fw_id, severity_str, framework_results)
+        calibrated = compute_calibrated_confidence(
+            evidence_count=verified_count,
+            avg_quote_match=avg_quote_match,
+            pattern_recurrence=max(1, verified_count),
+            alternative_explanations=0,
+            cross_framework_agreement=cross_agreement,
+            raw_confidence=confidence,
+        )
+
+        # Flag if raw confidence was very different from calibrated
+        if abs(confidence - calibrated) > 0.25:
             verification_flags.append({
                 "fw_id": fw_id,
                 "gate": "gate_confidence_calibration",
                 "severity": "info",
-                "message": f"Low confidence ({confidence}) but severe rating — verify calibration",
+                "message": f"Confidence recalibrated: {confidence:.2f} → {calibrated:.2f}",
             })
 
-        # Gate 5: Null handling
+        # ── Gate 5: Null handling ────────────────────────────────────────────
         if is_aim_null and not aim_output:
             verification_flags.append({
                 "fw_id": fw_id,
@@ -139,19 +192,15 @@ async def verify_node(state: PipelineState) -> dict:
                 "message": "AIM null finding should typically be green/yellow severity",
             })
 
-        # Gate 6: Coherence — output is internally consistent
-        # Headline and explanation should be consistent
+        # ── Gate 6: Coherence ────────────────────────────────────────────────
         if headline and explanation:
-            # Check for contradictory language
             headline_words = set(headline.lower().split())
             explanation_lower = explanation.lower()
 
-            # Positive headline with negative explanation
-            positive_indicators = ["good", "strong", "healthy", "positive", "leverage"]
-            negative_indicators = ["concern", "problem", "weak", "risk", "issue", "warning"]
+            positive_indicators = {"good", "strong", "healthy", "positive", "leverage"}
+            negative_indicators = {"concern", "problem", "weak", "risk", "issue", "warning"}
 
             headline_positive = any(w in headline_words for w in positive_indicators)
-            headline_negative = any(w in headline_words for w in negative_indicators)
             explanation_negative = any(w in negative_indicators for w in explanation_lower.split())
 
             if headline_positive and explanation_negative:
@@ -161,15 +210,8 @@ async def verify_node(state: PipelineState) -> dict:
                     "severity": "warning",
                     "message": "Headline is positive but explanation contains negative language",
                 })
-            if headline_negative and not explanation_negative:
-                verification_flags.append({
-                    "fw_id": fw_id,
-                    "gate": "gate_coherence",
-                    "severity": "info",
-                    "message": "Headline suggests concern but explanation appears neutral",
-                })
 
-        # Gate 7: Completeness check
+        # ── Gate 7: Completeness ─────────────────────────────────────────────
         missing_fields = []
         if not headline:
             missing_fields.append("headline")
@@ -186,41 +228,35 @@ async def verify_node(state: PipelineState) -> dict:
                 "message": f"Missing fields: {missing_fields}",
             })
 
-        # Pass through as serialized Insight dict
-        if headline and explanation:  # Only create insight if has content
+        # ── Build verified insight dict ──────────────────────────────────────
+        if headline and explanation:
             evidence_list = []
-            for e in evidence:
-                # Evidence items may be dicts or EvidenceRef objects
-                if isinstance(e, dict):
-                    evidence_list.append({
-                        "segment_id": e.get("segment_id", ""),
-                        "timestamp": e.get("start_time_ms", 0),
-                        "speaker": e.get("speaker", ""),
-                        "quote": e.get("text_excerpt", ""),
-                    })
-                else:
-                    # Pydantic model
-                    evidence_list.append({
-                        "segment_id": e.segment_id,
-                        "timestamp": e.start_time_ms,
-                        "speaker": e.speaker,
-                        "quote": e.text_excerpt,
-                    })
+            for e in verified_ev:
+                evidence_list.append({
+                    "segment_id": e.get("segment_id", ""),
+                    "timestamp": e.get("start_time_ms", e.get("timestamp", 0)),
+                    "speaker": e.get("speaker", ""),
+                    "quote": e.get("quote") or e.get("text_excerpt", ""),
+                    "quote_match_score": e.get("quote_match_score", 0.0),
+                    "quote_verified": e.get("quote_verified", False),
+                })
 
             insight_dict = {
                 "insight_id": f"{call_id}-fw{fw_id}",
                 "call_id": call_id,
                 "framework_result_id": f"FW-{fw_id:02d}",
-                "priority_rank": 0,  # Will be set by prioritize_insights
+                "priority_rank": 0,
                 "framework_name": framework_name,
                 "severity": severity_str,
-                "confidence": confidence,
+                "confidence": calibrated,
+                "raw_confidence": confidence,
                 "headline": headline,
                 "explanation": explanation,
                 "evidence": evidence_list,
                 "coaching_recommendation": coaching,
                 "created_at": "",
                 "is_top_insight": False,
+                "is_aim_null_finding": is_aim_null,
             }
             verified_insights.append(insight_dict)
 

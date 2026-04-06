@@ -5,41 +5,36 @@ Detects questions the buyer deflected, evaded, or changed topic to avoid.
 Part of the Pragmatic Intelligence group.
 """
 from pydantic import BaseModel, Field
-from typing import Optional
-
-
-class QuestionResponsePair(BaseModel):
-    question_segment_id: str
-    question_text: str
-    response_segment_id: str | None = None
-    response_text: str | None = None
-    classification: str  # "answered" | "vague" | "topic_change" | "counter_question" | "not_found"
-    confidence: float = Field(ge=0.0, le=1.0)
 
 
 class UnansweredQuestionsOutput(BaseModel):
-    total_questions_asked: int
-    evaded_count: int
-    vague_count: int
-    topic_change_count: int
-    counter_question_count: int
-    answered_count: int
-
+    total_questions_asked: int = 0
+    evaded_count: int = 0
+    vague_count: int = 0
+    answered_count: int = 0
     severity: str  # "red" | "orange" | "yellow" | "green"
     confidence: float = Field(ge=0.0, le=1.0)
-    headline: str = Field(max_length=80)
+    headline: str
     explanation: str
-
-    question_response_pairs: list[QuestionResponsePair] = Field(default_factory=list)
-
-    # Evidence — verbatim segment references
-    evaded_segments: list[dict] = Field(default_factory=list)
-    # {segment_id, timestamp, speaker, quote}
-
+    evidence: list[dict] = Field(default_factory=list)
+    is_aim_null_finding: bool = False
+    aim_output: str | None = None
     coaching_recommendation: str
 
 
 SYSTEM_PROMPT = """You are a precise sales call analyst. Your ONLY task is to determine whether the buyer answered each question the rep asked.
+
+CLOSED-WORLD CONTRACT:
+- The transcript below is your ONLY source of truth.
+- Do NOT use external knowledge to fill gaps.
+- If evidence is insufficient, return null/empty findings. "null" is a valid, correct answer.
+- Quote verbatim from the transcript. Do not paraphrase or fabricate quotes.
+
+CITE-BEFORE-CLAIM:
+- First extract exact verbatim quotes as evidence.
+- Then interpret what the evidence means.
+- Never make a claim without citing specific transcript text first.
+- Include segment_id references where available.
 
 RULES:
 1. Every claim must cite verbatim text from the transcript.

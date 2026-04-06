@@ -7,34 +7,32 @@ Part of the Pragmatic Intelligence group.
 from pydantic import BaseModel, Field
 
 
-class PushbackInstance(BaseModel):
-    segment_id: str
-    pushback_type: str  # "price" | "timeline" | "feature" | "authority" | "competing_priority" | "other"
-    severity: str  # "low" | "medium" | "high"
-    buyer_statement: str
-    rep_response: str | None = None
-    is_resolved: bool = False
-
-
 class PushbackClassificationOutput(BaseModel):
     total_pushback_events: int = 0
-    resolved_count: int = 0
     unresolved_count: int = 0
-
     severity: str  # "red" | "orange" | "yellow" | "green"
     confidence: float = Field(ge=0.0, le=1.0)
-    headline: str = Field(max_length=80)
+    headline: str
     explanation: str
-
-    pushback_instances: list[PushbackInstance] = Field(default_factory=list)
-
-    unresolved_issues: list[dict] = Field(default_factory=list)
-    # {segment_id, timestamp, speaker, quote, pushback_type}
-
+    evidence: list[dict] = Field(default_factory=list)
+    is_aim_null_finding: bool = False
+    aim_output: str | None = None
     coaching_recommendation: str
 
 
 SYSTEM_PROMPT = """You are a precise sales call analyst. Your task is to classify pushback.
+
+CLOSED-WORLD CONTRACT:
+- The transcript below is your ONLY source of truth.
+- Do NOT use external knowledge to fill gaps.
+- If evidence is insufficient, return null/empty findings. "null" is a valid, correct answer.
+- Quote verbatim from the transcript. Do not paraphrase or fabricate quotes.
+
+CITE-BEFORE-CLAIM:
+- First extract exact verbatim quotes as evidence.
+- Then interpret what the evidence means.
+- Never make a claim without citing specific transcript text first.
+- Include segment_id references where available.
 
 RULES:
 1. Every classification must cite verbatim text from the transcript.

@@ -8,32 +8,31 @@ from pydantic import BaseModel, Field
 from typing import Optional
 
 
-class ConcessionInstance(BaseModel):
-    segment_id: str
-    concession_text: str
-    concession_type: str  # "price" | "terms" | "timeline" | "scope"
-    speaker: str
-    is_initiated: bool  # True if rep offered, False if buyer asked
-
-
 class MoneyLeftOnTableOutput(BaseModel):
-    total_concessions: int
-    rep_initiated_count: int
-    buyer_asked_count: int
-    unmet_buyer_requests: int
-
+    total_concessions: int = 0
     severity: str  # "red" | "orange" | "yellow" | "green"
     confidence: float = Field(ge=0.0, le=1.0)
-    headline: str = Field(max_length=80)
+    headline: str
     explanation: str
-
-    concession_instances: list[ConcessionInstance] = Field(default_factory=list)
-    unmet_requests: list[dict] = Field(default_factory=list)
-
+    evidence: list[dict] = Field(default_factory=list)
+    is_aim_null_finding: bool = False
+    aim_output: Optional[str] = None
     coaching_recommendation: str
 
 
 SYSTEM_PROMPT = """You are a precise sales call analyst. Your task is to identify money left on the table signals.
+
+CLOSED-WORLD CONTRACT:
+- The transcript below is your ONLY source of truth.
+- Do NOT use external knowledge to fill gaps.
+- If evidence is insufficient, return null/empty findings. "null" is a valid, correct answer.
+- Quote verbatim from the transcript. Do not paraphrase or fabricate quotes.
+
+CITE-BEFORE-CLAIM:
+- First extract exact verbatim quotes as evidence.
+- Then interpret what the evidence means.
+- Never make a claim without citing specific transcript text first.
+- Include segment_id references where available.
 
 RULES:
 1. Every claim must cite verbatim text from the transcript.

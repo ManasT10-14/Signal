@@ -5,38 +5,35 @@ Detects weak commitment language and commitment fatigue.
 Part of the Pragmatic Intelligence group.
 """
 from pydantic import BaseModel, Field
-from typing import Optional
-
-
-class CommitmentInstance(BaseModel):
-    segment_id: str
-    commitment_text: str
-    strength: str  # "strong" | "moderate" | "weak" | "none"
-    speaker: str
-    timestamp_ms: int
 
 
 class CommitmentQualityOutput(BaseModel):
-    total_commitment_instances: int
-    strong_count: int
-    moderate_count: int
-    weak_count: int
-
+    total_commitment_instances: int = 0
+    strong_count: int = 0
+    weak_count: int = 0
     severity: str  # "red" | "orange" | "yellow" | "green"
     confidence: float = Field(ge=0.0, le=1.0)
-    headline: str = Field(max_length=80)
+    headline: str
     explanation: str
-
-    commitment_instances: list[CommitmentInstance] = Field(default_factory=list)
-
-    # Evidence — verbatim segment references
-    weak_segments: list[dict] = Field(default_factory=list)
-    # {segment_id, timestamp, speaker, quote}
-
+    evidence: list[dict] = Field(default_factory=list)
+    is_aim_null_finding: bool = False
+    aim_output: str | None = None
     coaching_recommendation: str
 
 
 SYSTEM_PROMPT = """You are a precise sales call analyst. Your task is to identify commitment language quality in the transcript.
+
+CLOSED-WORLD CONTRACT:
+- The transcript below is your ONLY source of truth.
+- Do NOT use external knowledge to fill gaps.
+- If evidence is insufficient, return null/empty findings. "null" is a valid, correct answer.
+- Quote verbatim from the transcript. Do not paraphrase or fabricate quotes.
+
+CITE-BEFORE-CLAIM:
+- First extract exact verbatim quotes as evidence.
+- Then interpret what the evidence means.
+- Never make a claim without citing specific transcript text first.
+- Include segment_id references where available.
 
 RULES:
 1. Every classification must cite verbatim text from the transcript.

@@ -30,6 +30,14 @@ class LLMConfig:
     provider: str  # "gemini" | "anthropic" | "openai"
 
 
+class LLMValidationError(Exception):
+    """Raised when LLM response fails schema validation."""
+
+    def __init__(self, message: str, raw_text: str = ""):
+        super().__init__(message)
+        self.raw_text = raw_text
+
+
 class LLMProvider(ABC):
     """
     Abstract interface for LLM providers.

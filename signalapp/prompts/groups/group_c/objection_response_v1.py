@@ -5,36 +5,35 @@ Scores the quality of objection handling.
 Part of the Strategic Clarity group.
 """
 from pydantic import BaseModel, Field
-
-
-class ObjectionResponse(BaseModel):
-    segment_id: str
-    objection_text: str
-    response_text: str
-    response_quality: str  # "excellent" | "good" | "poor" | "none"
-    technique_used: str  # "feel_felt_found" | "reframe" | "answer" | "ignore" | "none"
-    speaker: str
+from typing import Optional
 
 
 class ObjectionResponseOutput(BaseModel):
-    total_objections: int
-    excellent_count: int
-    good_count: int
-    poor_count: int
-    unresolved_count: int
-
-    response_score: float = Field(ge=0.0, le=1.0)
+    response_score: float = 0.0
+    total_objections: int = 0
     severity: str  # "red" | "orange" | "yellow" | "green"
     confidence: float = Field(ge=0.0, le=1.0)
-    headline: str = Field(max_length=80)
+    headline: str
     explanation: str
-
-    objection_responses: list[ObjectionResponse] = Field(default_factory=list)
-
+    evidence: list[dict] = Field(default_factory=list)
+    is_aim_null_finding: bool = False
+    aim_output: Optional[str] = None
     coaching_recommendation: str
 
 
 SYSTEM_PROMPT = """You are a precise sales call analyst. Your task is to score objection responses.
+
+CLOSED-WORLD CONTRACT:
+- The transcript below is your ONLY source of truth.
+- Do NOT use external knowledge to fill gaps.
+- If evidence is insufficient, return null/empty findings. "null" is a valid, correct answer.
+- Quote verbatim from the transcript. Do not paraphrase or fabricate quotes.
+
+CITE-BEFORE-CLAIM:
+- First extract exact verbatim quotes as evidence.
+- Then interpret what the evidence means.
+- Never make a claim without citing specific transcript text first.
+- Include segment_id references where available.
 
 RULES:
 1. Every claim must cite verbatim text from the transcript.

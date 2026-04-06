@@ -20,7 +20,7 @@ async def route_node(state: PipelineState) -> dict:
     from signalapp.domain.routing import route_frameworks, get_active_groups
 
     call_type = state["call_type"]
-    signals_dict = state["pass1_gate_signals"]
+    signals_dict = state.get("pass1_gate_signals")
 
     if signals_dict is None:
         # If Pass1 failed, use empty signals (fail-open — run all universal)

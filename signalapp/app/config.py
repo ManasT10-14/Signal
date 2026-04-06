@@ -21,7 +21,7 @@ class LLMGroupConfig:
     provider: str = "gemini"
     model: str = "gemini-2.5-flash"
     temperature: float = 0.1
-    max_tokens: int = 4000
+    max_tokens: int = 8192   # Safe upper limit for Gemini structured output
     fallback_model: Optional[str] = None
 
 
@@ -58,15 +58,13 @@ class AppConfig:
     # ── Gemini (legacy direct API — used when vertex_enabled=false) ──────────
     gemini_api_key: str = ""
 
-    # LLM Configuration (per prompt group)
-    llm_pass1: LLMGroupConfig = field(default_factory=LLMGroupConfig)
-    llm_group_a: LLMGroupConfig = field(default_factory=LLMGroupConfig)
-    llm_group_b: LLMGroupConfig = field(default_factory=LLMGroupConfig)
-    llm_group_c: LLMGroupConfig = field(default_factory=LLMGroupConfig)
-    llm_group_e: LLMGroupConfig = field(default_factory=LLMGroupConfig)
-    llm_summary: LLMGroupConfig = field(
-        default_factory=lambda: LLMGroupConfig(temperature=0.3)
-    )
+    # LLM Configuration (per prompt group — temperatures from LLM_RELIABILITY_GUIDE)
+    llm_pass1: LLMGroupConfig = field(default_factory=lambda: LLMGroupConfig(temperature=0.0))      # Extraction
+    llm_group_a: LLMGroupConfig = field(default_factory=lambda: LLMGroupConfig(temperature=0.05))    # Classification
+    llm_group_b: LLMGroupConfig = field(default_factory=lambda: LLMGroupConfig(temperature=0.05))    # Classification
+    llm_group_c: LLMGroupConfig = field(default_factory=lambda: LLMGroupConfig(temperature=0.10))    # Interpretation
+    llm_group_e: LLMGroupConfig = field(default_factory=lambda: LLMGroupConfig(temperature=0.10))    # Interpretation
+    llm_summary: LLMGroupConfig = field(default_factory=lambda: LLMGroupConfig(temperature=0.25))    # Generation
 
     # Langfuse
     langfuse_public_key: Optional[str] = None

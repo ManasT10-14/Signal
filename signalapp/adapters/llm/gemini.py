@@ -10,18 +10,26 @@ Direct API (legacy):
 """
 from __future__ import annotations
 
+import asyncio
+import json
+import logging
 import os
 import time
 from dataclasses import dataclass
 
 from google.genai import types
 import google.genai as genai
+from pydantic import ValidationError
 
-from .base import LLMProvider, LLMResponse, LLMConfig
+from .base import LLMProvider, LLMResponse, LLMConfig, LLMValidationError
 
+logger = logging.getLogger(__name__)
 
 GEMINI_INPUT_COST_PER_M = 0.075
 GEMINI_OUTPUT_COST_PER_M = 0.30
+
+# Default timeout for LLM calls (seconds)
+LLM_TIMEOUT_SECONDS = 120
 
 
 class GeminiProvider(LLMProvider):
@@ -85,21 +93,44 @@ class GeminiProvider(LLMProvider):
             response_schema=response_model,
         )
 
-        response = client.models.generate_content(
-            model=config.model,
-            contents=prompt,
-            config=gen_config,
-        )
+        # Run blocking SDK call in thread pool with timeout
+        loop = asyncio.get_event_loop()
+        try:
+            response = await asyncio.wait_for(
+                loop.run_in_executor(
+                    None,
+                    lambda: client.models.generate_content(
+                        model=config.model,
+                        contents=prompt,
+                        config=gen_config,
+                    ),
+                ),
+                timeout=LLM_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            raise LLMValidationError(
+                f"Gemini API call timed out after {LLM_TIMEOUT_SECONDS}s",
+                raw_text="",
+            )
 
         latency_ms = int((time.perf_counter() - start) * 1000)
+        raw_text = response.text or ""
         tokens_input = len(prompt) // 4
-        tokens_output = len(response.text) // 4
+        tokens_output = len(raw_text) // 4
         cost_usd = (
             tokens_input / 1_000_000 * GEMINI_INPUT_COST_PER_M
             + tokens_output / 1_000_000 * GEMINI_OUTPUT_COST_PER_M
         )
 
-        parsed = response_model.model_validate_json(response.text)
+        # Parse and validate response
+        try:
+            parsed = response_model.model_validate_json(raw_text)
+        except (ValidationError, json.JSONDecodeError) as e:
+            raise LLMValidationError(
+                f"Response failed schema validation: {e}",
+                raw_text=raw_text,
+            ) from e
+
         return parsed
 
     async def complete(self, prompt: str, config: LLMConfig) -> LLMResponse:
@@ -111,22 +142,37 @@ class GeminiProvider(LLMProvider):
             max_output_tokens=config.max_tokens,
         )
 
-        response = client.models.generate_content(
-            model=config.model,
-            contents=prompt,
-            config=gen_config,
-        )
+        # Run blocking SDK call in thread pool with timeout
+        loop = asyncio.get_event_loop()
+        try:
+            response = await asyncio.wait_for(
+                loop.run_in_executor(
+                    None,
+                    lambda: client.models.generate_content(
+                        model=config.model,
+                        contents=prompt,
+                        config=gen_config,
+                    ),
+                ),
+                timeout=LLM_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            raise LLMValidationError(
+                f"Gemini API call timed out after {LLM_TIMEOUT_SECONDS}s",
+                raw_text="",
+            )
 
         latency_ms = int((time.perf_counter() - start) * 1000)
+        raw_text = response.text or ""
         tokens_input = len(prompt) // 4
-        tokens_output = len(response.text) // 4
+        tokens_output = len(raw_text) // 4
         cost_usd = (
             tokens_input / 1_000_000 * GEMINI_INPUT_COST_PER_M
             + tokens_output / 1_000_000 * GEMINI_OUTPUT_COST_PER_M
         )
 
         return LLMResponse(
-            content=response.text,
+            content=raw_text,
             tokens_input=tokens_input,
             tokens_output=tokens_output,
             latency_ms=latency_ms,

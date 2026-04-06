@@ -16,6 +16,18 @@ class Severity(str, Enum):
     GREEN = "green"
 
 
+def normalize_severity(val) -> str:
+    """Convert any severity representation to a lowercase string.
+
+    Accepts Severity enum, string, or any object with a .value attribute.
+    """
+    if isinstance(val, Severity):
+        return val.value
+    if hasattr(val, "value"):
+        return str(val.value).lower()
+    return str(val).lower()
+
+
 class EvidenceType(str, Enum):
     SEGMENT = "segment"
     RANGE = "range"
@@ -41,9 +53,9 @@ class FrameworkOutput(BaseModel):
     score: Optional[float] = Field(default=None, ge=0, le=100)
     severity: Severity
     confidence: float = Field(ge=0.0, le=1.0)
-    headline: str = Field(max_length=80)
+    headline: str
     explanation: str
-    evidence: list[EvidenceRef] = Field(default_factory=list)
+    evidence: list[dict] = Field(default_factory=list)  # Flexible dict format for evidence
     coaching_recommendation: str
     raw_analysis: dict = Field(default_factory=dict)
     # AIM output (when framework runs due to AIM but finds nothing)

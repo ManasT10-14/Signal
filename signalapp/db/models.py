@@ -195,6 +195,7 @@ class AnalysisRun(Base):
     call_id = Column(GUID(), ForeignKey("call.id"), nullable=False)
     run_number = Column(Integer, nullable=False)  # 1, 2, 3...
     settings_snapshot = Column(JSONB, default=dict)  # exact config used
+    summary = Column(JSONB, default=dict)  # rich summary from summary_node
     status = Column(String(20), default="processing")  # processing|complete|failed|partial
     started_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
@@ -272,6 +273,7 @@ class Insight(Base):
     framework_result_id = Column(GUID(), ForeignKey("framework_result.id"), nullable=False)
     priority_rank = Column(Integer, default=0)
     is_top_insight = Column(Boolean, default=False)
+    is_aim_null_finding = Column(Boolean, default=False)  # AIM null finding flag
     # Denormalized content from FrameworkResult for easier querying
     framework_name = Column(String(80), nullable=False)
     severity = Column(String(10), nullable=False)  # red|orange|yellow|green

@@ -122,6 +122,7 @@ class CallRepository:
             session.add(call)
             await session.flush()
             await session.refresh(call)
+            await session.commit()
             return call
 
     async def get_by_id(self, call_id: uuid.UUID) -> Call | None:
@@ -219,6 +220,8 @@ class TranscriptRepository:
             ]
             session.add_all(segment_models)
             await session.flush()
+            await session.commit()
+            await session.close()
             return segment_models
 
     async def get_segments_for_call(self, call_id: uuid.UUID) -> list[TranscriptSegment]:
@@ -280,6 +283,40 @@ class AnalysisRunRepository:
                 .where(AnalysisRun.id == run_id)
                 .values(status=status, completed_at=datetime.utcnow())
             )
+
+    async def update_summary(self, run_id: uuid.UUID, summary: dict) -> None:
+        """Store the pipeline summary on the analysis run."""
+        async for session in get_session():
+            await session.execute(
+                update(AnalysisRun)
+                .where(AnalysisRun.id == run_id)
+                .values(summary=summary)
+            )
+
+    async def update_settings(self, run_id: uuid.UUID, extra: dict) -> None:
+        """Merge extra keys into settings_snapshot."""
+        async for session in get_session():
+            result = await session.execute(
+                select(AnalysisRun.settings_snapshot).where(AnalysisRun.id == run_id)
+            )
+            current = result.scalar_one_or_none() or {}
+            current.update(extra)
+            await session.execute(
+                update(AnalysisRun)
+                .where(AnalysisRun.id == run_id)
+                .values(settings_snapshot=current)
+            )
+
+    async def get_latest_for_call(self, call_id: uuid.UUID) -> AnalysisRun | None:
+        """Get the most recent analysis run for a call."""
+        async for session in get_session():
+            result = await session.execute(
+                select(AnalysisRun)
+                .where(AnalysisRun.call_id == call_id)
+                .order_by(AnalysisRun.run_number.desc())
+                .limit(1)
+            )
+            return result.scalar_one_or_none()
 
 
 # ─── Pass1Result Repository ────────────────────────────────────────────────────
@@ -428,6 +465,7 @@ class InsightRepository:
             models = [Insight(**i) for i in insights]
             session.add_all(models)
             await session.flush()
+            await session.commit()
             return models
 
     async def get_for_call(self, call_id: uuid.UUID, run_id: uuid.UUID | None = None) -> list[Insight]:

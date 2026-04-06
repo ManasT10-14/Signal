@@ -5,27 +5,34 @@ Measures alignment between rep framing and buyer priorities.
 Part of the Strategic Clarity group.
 """
 from pydantic import BaseModel, Field
+from typing import Optional
 
 
 class FrameMatchOutput(BaseModel):
-    alignment_score: float = Field(ge=0.0, le=1.0)
+    alignment_score: float = 0.0
     severity: str  # "red" | "orange" | "yellow" | "green"
     confidence: float = Field(ge=0.0, le=1.0)
-    headline: str = Field(max_length=80)
+    headline: str
     explanation: str
-
-    buyer_priorities: list[str] = Field(default_factory=list)
-    rep_frame_topics: list[str] = Field(default_factory=list)
-    alignment_moments: list[dict] = Field(default_factory=list)
-    # {segment_id, timestamp, speaker, quote, alignment_type}
-
-    misalignment_moments: list[dict] = Field(default_factory=list)
-    # {segment_id, timestamp, speaker, quote, misalignment_type}
-
+    evidence: list[dict] = Field(default_factory=list)
+    is_aim_null_finding: bool = False
+    aim_output: Optional[str] = None
     coaching_recommendation: str
 
 
 SYSTEM_PROMPT = """You are a precise sales call analyst. Your task is to measure frame match.
+
+CLOSED-WORLD CONTRACT:
+- The transcript below is your ONLY source of truth.
+- Do NOT use external knowledge to fill gaps.
+- If evidence is insufficient, return null/empty findings. "null" is a valid, correct answer.
+- Quote verbatim from the transcript. Do not paraphrase or fabricate quotes.
+
+CITE-BEFORE-CLAIM:
+- First extract exact verbatim quotes as evidence.
+- Then interpret what the evidence means.
+- Never make a claim without citing specific transcript text first.
+- Include segment_id references where available.
 
 RULES:
 1. Every claim must cite verbatim text from the transcript.

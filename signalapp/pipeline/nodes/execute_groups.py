@@ -152,7 +152,11 @@ async def execute_groups_node(state: PipelineState) -> dict:
             framework_errors[fw_id] = str(result)
         elif result is not None:
             # Serialize FrameworkOutput to dict for TypedDict compatibility
-            framework_results[fw_id] = result.model_dump()
+            dumped = result.model_dump()
+            # Normalize severity to string for downstream nodes
+            from signalapp.domain.framework import normalize_severity
+            dumped["severity"] = normalize_severity(dumped.get("severity", "green"))
+            framework_results[fw_id] = dumped
         else:
             framework_errors[fw_id] = "No output returned"
 
@@ -201,18 +205,40 @@ async def _run_framework(
 
     full_prompt = f"{system_prompt}\n\n{user_prompt}"
 
-    try:
-        result = await provider.complete_structured(
-            prompt=full_prompt,
-            response_model=output_class,
-            config=llm_config,
-        )
+    # ── Attempt with retry ──────────────────────────────────────────────────
+    last_error = ""
+    for attempt in range(3):
+        try:
+            result = await provider.complete_structured(
+                prompt=full_prompt,
+                response_model=output_class,
+                config=llm_config,
+            )
+            # Truncate headline if too long
+            if hasattr(result, "headline") and result.headline and len(result.headline) > 120:
+                result.headline = result.headline[:117] + "..."
+            return _to_framework_output(fw_id, result)
+        except Exception as e:
+            last_error = str(e)[:200]
+            logger.warning(f"[execute_groups] FW-{fw_id} attempt {attempt+1} failed: {last_error[:100]}")
 
-        # Convert to FrameworkOutput
-        return _to_framework_output(fw_id, result)
+            # Try partial extraction from raw text on last attempt
+            if attempt == 2:
+                try:
+                    raw_text = _get_raw_response_text(provider, full_prompt, None, llm_config)
+                    partial = _try_partial_extraction(output_class, raw_text, fw_id)
+                    if partial is not None:
+                        logger.info(f"[execute_groups] FW-{fw_id}: using partial extraction")
+                        return partial
+                except Exception:
+                    pass
 
-    except Exception as e:
-        return _stub_framework_output(fw_id, f"LLM call failed: {str(e)}")
+            # Don't append to prompt — just retry with same prompt
+            continue
+
+    # All retries exhausted — return stub
+    logger.warning(f"[execute_groups] FW-{fw_id} all attempts failed: {last_error}")
+    return _stub_framework_output(fw_id, f"LLM call failed: {last_error}")
 
 
 def _to_framework_output(fw_id: int, raw_result) -> FrameworkOutput:
@@ -251,16 +277,37 @@ def _to_framework_output(fw_id: int, raw_result) -> FrameworkOutput:
     if hasattr(raw_result, "aim_output"):
         aim_output = raw_result.aim_output
 
+    # Get canonical framework name from registry
+    from signalapp.domain.frameworks import get_framework_name
+    canonical_name = get_framework_name(fw_id)
+
+    # Extract evidence from raw result if available
+    evidence_list = []
+    raw_evidence = getattr(raw_result, "evidence", []) or []
+    for ev in raw_evidence:
+        if hasattr(ev, "model_dump"):
+            ev_dict = ev.model_dump()
+        elif isinstance(ev, dict):
+            ev_dict = ev
+        else:
+            continue
+        evidence_list.append({
+            "segment_id": ev_dict.get("segment_id", ""),
+            "start_time_ms": ev_dict.get("start_time_ms", 0),
+            "speaker": ev_dict.get("speaker", ""),
+            "text_excerpt": ev_dict.get("text_excerpt", ""),
+        })
+
     # Build FrameworkOutput
     return FO(
         framework_id=f"FW-{fw_id:02d}",
-        framework_name=getattr(raw_result, "headline", f"Framework {fw_id}")[:40],
+        framework_name=canonical_name,
         score=score,
         severity=severity_enum,
         confidence=getattr(raw_result, "confidence", 0.5),
         headline=getattr(raw_result, "headline", f"Framework {fw_id} result"),
         explanation=getattr(raw_result, "explanation", ""),
-        evidence=[],
+        evidence=evidence_list,
         coaching_recommendation=getattr(raw_result, "coaching_recommendation", ""),
         raw_analysis=raw_result.model_dump() if hasattr(raw_result, "model_dump") else {},
         is_aim_null_finding=is_aim_null,
@@ -299,3 +346,150 @@ def _format_transcript(segments: list[dict]) -> str:
         text = seg.get("text", "")
         lines.append(f"[{timestamp}] {speaker} ({role}): {text}")
     return "\n".join(lines)
+
+
+# ── Partial extraction helpers (PRD: ≥50% fields valid → use partial results) ───
+
+import json
+import re
+
+
+def _get_raw_response_text(provider, prompt: str, config, llm_config) -> str | None:
+    """Get the raw response text from the provider for partial parsing."""
+    try:
+        client = provider._get_client()
+        from google.genai import types as google_types
+        gen_config = google_types.GenerateContentConfig(
+            temperature=llm_config.temperature,
+            max_output_tokens=llm_config.max_tokens,
+        )
+        response = client.models.generate_content(
+            model=llm_config.model,
+            contents=prompt,
+            config=gen_config,
+        )
+        return response.text
+    except Exception as e:
+        logger.warning(f"_get_raw_response_text failed: {type(e).__name__}: {e}")
+        return None
+
+
+def _try_partial_extraction(output_class, raw_text: str, fw_id: int):
+    """Try to extract valid fields from raw JSON text when Pydantic validation fails."""
+    if not raw_text:
+        return None
+
+    # Strip markdown code fences if present
+    text = re.sub(r"^```json\s*", "", raw_text.strip(), flags=re.IGNORECASE)
+    text = re.sub(r"\s*```$", "", text.strip())
+
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        # Try to find JSON object in the text
+        start = text.find("{")
+        end = text.rfind("}") + 1
+        if start >= 0 and end > start:
+            try:
+                data = json.loads(text[start:end])
+            except json.JSONDecodeError:
+                return None
+        else:
+            return None
+
+    if not isinstance(data, dict):
+        return None
+
+    # Build a partial FrameworkOutput with whatever fields parse correctly
+    from signalapp.domain.framework import FrameworkOutput as FO, Severity
+
+    # Truncate headline if needed
+    headline = data.get("headline", f"Framework {fw_id}")
+    if len(headline) > 80:
+        headline = headline[:77] + "..."
+
+    # Map severity
+    sev = data.get("severity", "green")
+    try:
+        severity_enum = Severity(sev)
+    except (ValueError, TypeError):
+        severity_enum = Severity.YELLOW
+
+    # Extract score from whichever field exists
+    score = None
+    for score_key in ["health_score", "compliance_score", "response_score",
+                       "alignment_score", "structure_score", "urgency_score",
+                       "buyer_leverage_score"]:
+        val = data.get(score_key)
+        if val is not None:
+            score = float(val) * 100
+            break
+
+    # Get evidence / instances
+    evidence = data.get("evidence") or data.get("commitment_instances") or data.get("timing_signals") or []
+    if evidence and isinstance(evidence, list) and len(evidence) > 0:
+        first_item = evidence[0] if isinstance(evidence[0], dict) else {}
+        clean_evidence = [
+            {
+                "segment_id": e.get("segment_id", ""),
+                "start_time_ms": e.get("timestamp", e.get("start_time_ms", 0)),
+                "speaker": e.get("speaker", ""),
+                "text_excerpt": e.get("quote", e.get("text_excerpt", "")),
+            }
+            for e in evidence[:5]
+            if isinstance(e, dict)
+        ]
+    else:
+        clean_evidence = []
+
+    # Coaching
+    coaching = data.get("coaching_recommendation", "")
+
+    # Only return if we have meaningful content
+    explanation = data.get("explanation", "")
+    if not headline and not explanation:
+        return None
+
+    return FO(
+        framework_id=f"FW-{fw_id:02d}",
+        framework_name=headline[:40],
+        score=score,
+        severity=severity_enum,
+        confidence=float(data.get("confidence", 0.5)),
+        headline=headline,
+        explanation=explanation,
+        evidence=clean_evidence,
+        coaching_recommendation=coaching,
+        raw_analysis=data,
+        is_aim_null_finding=bool(data.get("is_aim_null_finding")),
+        aim_output=data.get("aim_output"),
+    )
+
+
+def _count_valid_fields(framework_output: "FrameworkOutput", output_class) -> int:
+    """Count how many fields in the output_class are non-null/non-empty in the result."""
+    from signalapp.domain.framework import FrameworkOutput
+
+    if not isinstance(framework_output, FrameworkOutput):
+        return 0
+
+    count = 0
+    # Check core required fields
+    if framework_output.headline and framework_output.headline != "Analysis unavailable":
+        count += 1
+    if framework_output.explanation and "could not be completed" not in framework_output.explanation:
+        count += 1
+    if framework_output.coaching_recommendation and "Unable to generate" not in framework_output.coaching_recommendation:
+        count += 1
+    if framework_output.confidence and framework_output.confidence > 0:
+        count += 1
+    if framework_output.severity:
+        count += 1
+    return count
+
+
+def _total_schema_fields(output_class) -> int:
+    """Return the number of expected fields in the output schema."""
+    if hasattr(output_class, "model_fields"):
+        return len(output_class.model_fields)
+    return 7  # conservative default

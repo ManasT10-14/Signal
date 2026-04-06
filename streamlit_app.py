@@ -1,1490 +1,1107 @@
 """
-Signal — Streamlit Testing Harness
-==================================
-A professional testing interface for the Signal intelligence backend.
-Mimics the Call Review page from the PRD (
-    Section 9) for demo and testing purposes.
-
-This is NOT the production frontend — the production frontend per PRD is Next.js.
-This app exists to test the backend pipeline without deploying the full Next.js app.
-
-Usage:
-    streamlit run streamlit_app.py
+Signal — Behavioral Sales Intelligence
+======================================
+Dark-themed Streamlit UI. 60/40 Call Review split.
+4-tab right panel (Insights, Stats, Summary, Frameworks).
+Single-query dashboard for fast load times.
 """
 
 from __future__ import annotations
 
-import json
-import os
+import time
 import uuid
-import re
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, date
 
 import streamlit as st
-import pandas as pd
 
-# ─── signalapp Imports ───────────────────────────────────────────────────────────
-# Use real signalapp modules when available, fall back to local definitions for demo
-try:
-    from signalapp.domain.routing import (
-        route_frameworks as _sig_route_frameworks,
-        should_run_framework as _sig_should_run_framework,
-        Pass1GateSignals,
-        ROUTING_TABLE as _SIG_ROUTING_TABLE,
-        GROUP_MEMBERSHIP as _SIG_GROUP_MEMBERSHIP,
-        PINNED_FRAMEWORKS as _SIG_PINNED_FRAMEWORKS,
-    )
-    from signalapp.domain.framework import FRAMEWORK_REGISTRY as _SIG_FRAMEWORK_REGISTRY
-    from signalapp.api.calls import _parse_transcript as _sig_parse_transcript
-    SIGNAL_AVAILABLE = True
-except ImportError:
-    SIGNAL_AVAILABLE = False
-    Pass1GateSignals = None
-
+# ── Backend config ──────────────────────────────────────────────────────────────
+import os
 BACKEND_URL = os.environ.get("SIGNAL_BACKEND_URL", "http://localhost:8000")
-API_KEY = os.environ.get("SIGNAL_API_KEY", "")
 
+# ── Dark Theme Palette ─────────────────────────────────────────────────────────
+BG_PRIMARY = "#0F1117"       # main background
+BG_CARD = "#1A1D27"          # card background
+BG_ELEVATED = "#232731"      # elevated surfaces
+BG_INPUT = "#2A2E3A"         # input fields
+BORDER = "#2E3340"           # borders
+TEXT_PRIMARY = "#E8EAED"     # primary text
+TEXT_SECONDARY = "#9AA0AC"   # secondary text
+TEXT_MUTED = "#6B7280"       # muted text
+ACCENT = "#14B8A6"           # teal primary
+ACCENT_DARK = "#0F766E"      # teal dark
+ACCENT_GLOW = "rgba(20,184,166,0.15)"
+RED = "#EF4444"
+ORANGE = "#F97316"
+YELLOW = "#EAB308"
+GREEN = "#22C55E"
 
-def check_backend_connection() -> bool:
-    """Check if FastAPI backend is reachable."""
-    import requests
-    try:
-        response = requests.get(
-            f"{BACKEND_URL}/health",
-            timeout=5,
-        )
-        return response.status_code == 200
-    except Exception:
-        return False
-
-# ─── Page Config ────────────────────────────────────────────────────────────────
-st.set_page_config(
-    page_title="Signal — Testing Harness",
-    page_icon="🔊",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
-
-# ─── Theme / Style ─────────────────────────────────────────────────────────────
-st.html("""
-<style>
-:root {
-    --signal-teal: #0D9488;
-    --signal-teal-dark: #0F766E;
-    --signal-teal-light: #CCFBF1;
-    --signal-amber: #F59E0B;
-    --signal-amber-light: #FEF3C7;
-    --signal-red: #EF4444;
-    --signal-red-light: #FEE2E2;
-    --signal-orange: #F97316;
-    --signal-orange-light: #FFEDD5;
-    --signal-yellow: #EAB308;
-    --signal-yellow-light: #FEF9C3;
-    --signal-green: #22C55E;
-    --signal-green-light: #DCFCE7;
-    --signal-gray-50: #F9FAFB;
-    --signal-gray-100: #F3F4F6;
-    --signal-gray-200: #E5E7EB;
-    --signal-gray-400: #9CA3AF;
-    --signal-gray-600: #4B5563;
-    --signal-gray-800: #1F2937;
-    --signal-gray-900: #111827;
-}
-
-/* Sidebar */
-[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #0F766E 0%, #0D9488 100%);
-}
-
-/* Main content area */
-.main-content {
-    background: white;
-}
-
-/* Metric cards */
-.metric-card {
-    background: var(--signal-gray-50);
-    border: 1px solid var(--signal-gray-200);
-    border-radius: 8px;
-    padding: 12px 16px;
-    margin-bottom: 8px;
-}
-
-/* Insight card */
-.insight-card {
-    border: 1px solid var(--signal-gray-200);
-    border-radius: 10px;
-    padding: 16px;
-    margin-bottom: 12px;
-    border-left: 4px solid var(--signal-gray-200);
-}
-
-.insight-card.red { border-left-color: #EF4444; background: #FEF2F2; }
-.insight-card.orange { border-left-color: #F97316; background: #FFF7ED; }
-.insight-card.yellow { border-left-color: #EAB308; background: #FEFCE8; }
-.insight-card.green { border-left-color: #22C55E; background: #F0FDF4; }
-
-/* Severity badges */
-.severity-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-.severity-badge.red { background: #FEE2E2; color: #DC2626; }
-.severity-badge.orange { background: #FFEDD5; color: #EA580C; }
-.severity-badge.yellow { background: #FEF9C3; color: #CA8A04; }
-.severity-badge.green { background: #DCFCE7; color: #16A34A; }
-
-/* Framework row */
-.fw-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--signal-gray-100);
-}
-.fw-row:hover { background: var(--signal-gray-50); }
-
-/* Transcript segment */
-.segment {
-    padding: 8px 12px;
-    margin-bottom: 4px;
-    border-radius: 6px;
-    font-size: 13px;
-    line-height: 1.5;
-}
-.segment.rep { background: #DBEAFE; border-left: 3px solid #3B82F6; }
-.segment.buyer { background: #FEF3C7; border-left: 3px solid #F59E0B; }
-.segment .ts { color: var(--signal-gray-400); font-size: 11px; margin-right: 8px; }
-.segment .speaker { font-weight: 600; margin-right: 8px; }
-.segment .speaker.rep { color: #1D4ED8; }
-.segment .speaker.buyer { color: #92400E; }
-
-/* Call type badges */
-.call-type-badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 500;
-}
-.call-type-badge.discovery { background: #EDE9FE; color: #6D28D9; }
-.call-type-badge.demo { background: #DBEAFE; color: #1D4ED8; }
-.call-type-badge.pricing { background: #FEF3C7; color: #92400E; }
-.call-type-badge.negotiation { background: #FFEDD5; color: #C2410C; }
-.call-type-badge.close { background: #DCFCE7; color: #15803D; }
-.call-type-badge.check_in { background: #F3F4F6; color: #4B5563; }
-.call-type-badge.other { background: #F9FAFB; color: #6B7280; }
-
-/* Status badges */
-.status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 10px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 500;
-}
-.status-badge.processing { background: #FEF3C7; color: #92400E; }
-.status-badge.ready { background: #DCFCE7; color: #15803D; }
-.status-badge.failed { background: #FEE2E2; color: #DC2626; }
-.status-badge.partial { background: #EDE9FE; color: #6D28D9; }
-
-/* Progress bar */
-.stProgress > div > div > div > div {
-    background: linear-gradient(90deg, #0D9488, #0F766E);
-}
-
-/* Tabs */
-button[data-testid="stTab"] {
-    font-weight: 600;
-}
-
-/* Code blocks */
-code {
-    background: #F3F4F6;
-    padding: 2px 5px;
-    border-radius: 3px;
-    font-size: 12px;
-}
-
-/* Coaching box */
-.coaching-box {
-    background: linear-gradient(135deg, #CCFBF1 0%, #F0FDF4 100%);
-    border: 1px solid #99F6E4;
-    border-radius: 8px;
-    padding: 12px;
-    margin-top: 8px;
-}
-.coaching-box strong { color: #0F766E; }
-
-/* Routing decision chips */
-.routing-chip {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 11px;
-    font-weight: 600;
-    margin-right: 4px;
-}
-.routing-chip.run { background: #DCFCE7; color: #15803D; }
-.routing-chip.block { background: #FEE2E2; color: #DC2626; }
-.routing-chip.aim { background: #EDE9FE; color: #6D28D9; }
-.routing-chip.pinned { background: #DBEAFE; color: #1D4ED8; }
-
-/* Sidebar nav */
-.sidebar-nav-item {
-    padding: 10px 14px;
-    border-radius: 6px;
-    color: white;
-    font-weight: 500;
-    cursor: pointer;
-    margin-bottom: 4px;
-    transition: background 0.2s;
-}
-.sidebar-nav-item:hover { background: rgba(255,255,255,0.15); }
-.sidebar-nav-item.active { background: rgba(255,255,255,0.25); border-left: 3px solid white; }
-
-/* Group header */
-.group-header {
-    background: var(--signal-gray-800);
-    color: white;
-    padding: 8px 14px;
-    border-radius: 6px 6px 0 0;
-    font-weight: 700;
-    font-size: 13px;
-    letter-spacing: 0.5px;
-}
-</style>
-""")
-
-# ─── Framework Registry (from signalapp/domain/framework.py) ────────────────────
-
-FRAMEWORK_REGISTRY = {
-    1: {"name": "Unanswered Questions", "group": "B", "is_scaffolded": False},
-    2: {"name": "Commitment Quality", "group": "B", "is_scaffolded": False},
-    3: {"name": "BATNA Detection", "group": "A", "is_scaffolded": True},
-    4: {"name": "Money Left on Table", "group": "A", "is_scaffolded": False},
-    5: {"name": "Question Quality", "group": "C", "is_scaffolded": False},
-    6: {"name": "Commitment Thermometer", "group": "B", "is_scaffolded": False},
-    7: {"name": "First Number Tracker", "group": "A", "is_scaffolded": True},
-    8: {"name": "Emotional Turning Points", "group": "E", "is_scaffolded": False, "is_pinned": True},
-    9: {"name": "Emotional Trigger Analysis", "group": "E", "is_scaffolded": False, "is_pinned": True},
-    10: {"name": "Frame Match Score", "group": "C", "is_scaffolded": False},
-    11: {"name": "Close Attempt Analysis", "group": "C", "is_scaffolded": True},
-    12: {"name": "Deal Health at Close", "group": "A", "is_scaffolded": True},
-    13: {"name": "Deal Timing Intelligence", "group": "A", "is_scaffolded": True},
-    14: {"name": "Methodology Compliance", "group": "C", "is_scaffolded": True},
-    15: {"name": "Call Structure Analysis", "group": "C", "is_scaffolded": False, "is_pinned": True},
-    16: {"name": "Pushback Classification", "group": "B", "is_scaffolded": False},
-    17: {"name": "Objection Response Score", "group": "C", "is_scaffolded": False},
-}
-
-GROUP_NAMES = {
-    "A": "Negotiation Intelligence",
-    "B": "Pragmatic Intelligence",
-    "C": "Strategic Clarity",
-    "D": "Deal Health (Phase 2)",
-    "E": "Emotional Resonance",
-}
-
-SEVERITY_COLORS = {
-    "red": ("#EF4444", "#FEF2F2"),
-    "orange": ("#F97316", "#FFF7ED"),
-    "yellow": ("#EAB308", "#FEFCE8"),
-    "green": ("#22C55E", "#F0FDF4"),
+SEV_COLORS = {
+    "red":    (RED,    "#3B1C1C"),
+    "orange": (ORANGE, "#3B2A1C"),
+    "yellow": (YELLOW, "#3B351C"),
+    "green":  (GREEN,  "#1C3B2A"),
 }
 
 CALL_TYPES = ["discovery", "demo", "pricing", "negotiation", "close", "check_in", "other"]
-
-# ─── Sample Data ───────────────────────────────────────────────────────────────
-
-SAMPLE_TRANSCRIPT_DISCOVERY = """[00:00] Alex (rep): Thanks for joining today! I've been looking forward to this conversation.
-[00:15] Jordan (buyer): Happy to be here. I've reviewed the materials you sent over.
-[00:28] Alex (rep): Great! Let's start with understanding your current setup. What challenges are you facing right now?
-[00:45] Jordan (buyer): Honestly, we're struggling with our existing process. It's manual and error-prone.
-[01:12] Alex (rep): I hear that a lot. Can you tell me more about the scale — how many people are affected by this?
-[01:30] Jordan (buyer): About 40 people across three departments. It's slowing us down significantly.
-[02:05] Alex (rep): And when you say "slowing down" — what's the impact on your business? Are we talking revenue, customer satisfaction?
-[02:22] Jordan (buyer): Both, honestly. Customer response times have dropped and it's affecting our metrics.
-[03:10] Alex (rep): That makes sense. Let's talk about your timeline — when are you looking to have this resolved?
-[03:28] Jordan (buyer): Ideally within this quarter. We're under pressure from leadership.
-[04:05] Alex (rep): Understood. And who's involved in the decision-making process? Who else would need to be part of this conversation?
-[04:20] Jordan (buyer): My manager Sarah will need to be involved, and probably Finance since it's a significant investment.
-[05:00] Alex (rep): Makes sense. Can I ask — have you looked at other solutions? What alternatives are you considering?
-[05:15] Jordan (buyer): We've had some conversations with a competitor, but nothing formal yet. We're still in early stages.
-[06:10] Alex (rep): That's helpful context. What would a successful outcome look like for you in three months?
-[06:30] Jordan (buyer): I want to see at least a 30% improvement in processing time and significantly fewer errors.
-[07:15] Alex (rep): Those are clear metrics. I think we can absolutely help with that. Can we schedule a demo where I show you how this would work in practice?
-[07:35] Jordan (buyer): Yes, that would be great. I'm available Thursday or Friday next week.
-[08:00] Alex (rep): Perfect. I'll send over some calendar options. Before we wrap — what's your budget range for something like this?
-[08:20] Jordan (buyer): We're thinking somewhere between $50K and $80K for the initial implementation. """
-
-SAMPLE_TRANSCRIPT_PRICING = """[00:00] Alex (rep): Thanks for making time Sarah. I wanted to walk through the pricing proposal we discussed.
-[00:15] Sarah (buyer): Sure. I've had a chance to review it. To be honest, the numbers are higher than what we were expecting.
-[00:45] Alex (rep): I understand. Let me walk you through the value behind each component. The enterprise tier includes...
-[01:30] Sarah (buyer): I get the value proposition, but we're a startup. We need to be careful about spending right now.
-[02:10] Alex (rep): What if I could structure it differently? We have flexible payment terms for companies at your stage.
-[02:45] Sarah (buyer): Maybe. Let me think about it. What support do we get included?
-[03:20] Alex (rep): Full support, dedicated account manager, quarterly reviews. All included in the enterprise tier.
-[03:55] Sarah (buyer): That's good. But I still think the price is high. Can you do anything on the license fee?
-[04:30] Alex (rep): I appreciate your directness. What if we looked at a smaller team license to start? We could do 15 users at a 10% discount.
-[05:00] Sarah (buyer): That helps, but I was hoping for something closer to 15 or 20 percent off given we're committing to annual.
-[05:30] Alex (rep): I can do 12% off the 15-user package if we can sign by end of this month.
-[05:55] Sarah (buyer): What about the implementation fees? Those weren't in the original quote.
-[06:20] Alex (rep): We can waive those for you — that's about $8,000 in value.
-[06:45] Sarah (buyer): And what about the first year maintenance? Can that be included?
-[07:15] Alex (rep): I think we can roll that in as well. That saves you another $5,000.
-[07:45] Sarah (buyer): Great. So what's the final number we're looking at?
-[08:10] Alex (rep): With all of that, we're at $67,500 for the first year, all-in.
-[08:40] Sarah (buyer): Can we spread that across quarterly payments rather than annual upfront?
-[09:00] Alex (rep): Absolutely. I'll put together a payment schedule. Who else needs to approve this on your end?
-[09:30] Sarah (buyer): My manager and possibly Finance. We have a budget process we need to follow.
-[10:15] Alex (rep): I understand. What does that timeline look like?
-[10:40] Sarah (buyer): Probably 2-3 weeks to get everything approved and signed.
-[11:00] Alex (rep): And do you have budget allocated for this in Q2?
-[11:20] Sarah (buyer): We're working through that now. It depends on the final number. """
-
-# ─── Mock framework results ────────────────────────────────────────────────────
-
-def generate_mock_results(call_type: str, transcript: str) -> dict[int, dict]:
-    """Generate realistic mock framework results for demo purposes."""
-    results = {}
-
-    # Calculate some basic metrics from transcript
-    has_pricing = "price" in transcript.lower() or "discount" in transcript.lower() or "$" in transcript
-    has_competitor = "competitor" in transcript.lower() or "alternative" in transcript.lower()
-    has_close_language = "sign" in transcript.lower() or "approve" in transcript.lower() or "final number" in transcript.lower()
-    has_objection = "high" in transcript.lower() or "expensive" in transcript.lower() or "concern" in transcript.lower()
-
-    # Universal frameworks (1, 2, 6, 8, 9, 15 — always run)
-    results[1] = {
-        "framework_id": "FW-01",
-        "framework_name": "Unanswered Questions",
-        "group": "B",
-        "score": 78.0,
-        "severity": "yellow",
-        "confidence": 0.82,
-        "headline": "1 key question left unresolved",
-        "explanation": "The buyer's question about budget allocation was deflected twice — once at 08:00 and again at 11:20. This suggests budget authority may be held by someone not in the call.",
-        "coaching_recommendation": "Try: 'Who else needs to be involved in the budget decision?' Direct questions about authority are harder to deflect.",
-        "evidence": [
-            {"timestamp": "08:00", "speaker": "buyer", "quote": "We're thinking somewhere between $50K and $80K..."},
-            {"timestamp": "11:20", "speaker": "buyer", "quote": "We're working through that now. It depends on the final number."},
-        ],
-        "is_aim_null_finding": False,
-    }
-
-    results[2] = {
-        "framework_id": "FW-02",
-        "framework_name": "Commitment Quality",
-        "group": "B",
-        "score": 65.0,
-        "severity": "orange",
-        "confidence": 0.79,
-        "headline": "Weak commitment language detected",
-        "explanation": "Buyer used moderate/conditional language 4 times ('I think', 'maybe', 'we're working through it') without specific, time-bound commitments.",
-        "coaching_recommendation": "Seek specificity: 'Can we schedule the technical review for Thursday at 2pm?' Closed questions lock in commitments.",
-        "evidence": [
-            {"timestamp": "05:00", "speaker": "buyer", "quote": "Maybe. Let me think about it."},
-            {"timestamp": "10:40", "speaker": "buyer", "quote": "We're working through that now."},
-        ],
-        "is_aim_null_finding": False,
-    }
-
-    results[6] = {
-        "framework_id": "FW-06",
-        "framework_name": "Commitment Thermometer",
-        "group": "B",
-        "score": 58.0,
-        "severity": "orange",
-        "confidence": 0.74,
-        "headline": "Buyer enthusiasm at 58/100 — lukewarm",
-        "explanation": "Buyer used 'I get it' and 'that's good' but never 'excited', 'ready', or 'let's do this'. No urgency language detected.",
-        "coaching_recommendation": "Probe for urgency: 'What happens if this doesn't get resolved this quarter?' creates time pressure.",
-        "evidence": [
-            {"timestamp": "03:20", "speaker": "buyer", "quote": "That's good."},
-        ],
-        "is_aim_null_finding": False,
-    }
-
-    results[8] = {
-        "framework_id": "FW-08",
-        "framework_name": "Emotional Turning Points",
-        "group": "E",
-        "score": 72.0,
-        "severity": "yellow",
-        "confidence": 0.81,
-        "headline": "2 emotional shifts detected",
-        "explanation": "Buyer enthusiasm dipped at 01:30 (budget concern) and recovered slightly at 07:15 (concessions offered). Overall trajectory: neutral-to-slightly-negative.",
-        "coaching_recommendation": "Watch for buying signals before discussing price. Establish value before concessions.",
-        "evidence": [
-            {"timestamp": "01:30", "speaker": "buyer", "quote": "Honestly, the numbers are higher than what we were expecting."},
-            {"timestamp": "07:15", "speaker": "buyer", "quote": "Great. So what's the final number we're looking at?"},
-        ],
-        "is_aim_null_finding": False,
-    }
-
-    results[15] = {
-        "framework_id": "FW-15",
-        "framework_name": "Call Structure Analysis",
-        "group": "C",
-        "score": 81.0,
-        "severity": "green",
-        "confidence": 0.88,
-        "headline": "Well-structured call flow",
-        "explanation": "Call followed standard progression: opening → discovery → pricing → objections → negotiation → next steps. No phase skipping detected.",
-        "coaching_recommendation": "Continue this structured approach. Consider adding a 'summarize agreed value' moment before discussing price.",
-        "evidence": [],
-        "is_aim_null_finding": False,
-    }
-
-    # Conditional frameworks
-    if call_type in ("pricing", "negotiation", "close") or has_pricing:
-        results[4] = {
-            "framework_id": "FW-04",
-            "framework_name": "Money Left on Table",
-            "group": "A",
-            "score": 85.0,
-            "severity": "red",
-            "confidence": 0.91,
-            "headline": "~$13,000 in unconditional concessions",
-            "explanation": "Rep offered 12% discount ($8,100) + waived implementation ($8,000) + free maintenance ($5,000) = $21,100 total concessions. All were unconditional — no matching asks.",
-            "coaching_recommendation": "Use 'If...then' structure: 'If we can sign by Friday, I can do 12% — what can you give me in return?' Every concession needs a matching ask.",
-            "evidence": [
-                {"timestamp": "04:30", "speaker": "rep", "quote": "I can do 12% off the 15-user package if we can sign by end of this month."},
-                {"timestamp": "06:20", "speaker": "rep", "quote": "We can waive those for you — that's about $8,000 in value."},
-            ],
-            "is_aim_null_finding": False,
-        }
-
-    if call_type in ("pricing", "negotiation", "close"):
-        results[3] = {
-            "framework_id": "FW-03",
-            "framework_name": "BATNA Detection",
-            "group": "A",
-            "score": 68.0,
-            "severity": "yellow",
-            "confidence": 0.77,
-            "headline": "No strong alternatives mentioned",
-            "explanation": "Buyer mentioned they 'had conversations with a competitor' but provided no specifics. No internal build option discussed. BATNA appears weak.",
-            "coaching_recommendation": "Weak BATNA = pricing leverage. Rep should hold position and avoid preemptive discounts.",
-            "evidence": [
-                {"timestamp": "05:15", "speaker": "buyer", "quote": "We've had some conversations with a competitor, but nothing formal yet."},
-            ],
-            "is_aim_null_finding": True,
-            "aim_output": "No alternatives mentioned. Weak BATNA — buyer has limited walkaway options.",
-        }
-
-    if has_close_language or call_type == "close":
-        results[11] = {
-            "framework_id": "FW-11",
-            "framework_name": "Close Attempt Analysis",
-            "group": "C",
-            "score": 70.0,
-            "severity": "yellow",
-            "confidence": 0.83,
-            "headline": "1 close attempt identified",
-            "explanation": "Rep attempted a 'final number summary' close at 09:00. Buyer responded with a deferral ('2-3 weeks to get approved'). No trial close was used.",
-            "coaching_recommendation": "Use trial close before summary: 'Based on everything we've discussed, does this make sense to move forward?' Then ask for the next step.",
-            "evidence": [
-                {"timestamp": "09:00", "speaker": "rep", "quote": "Absolutely. I'll put together a payment schedule."},
-            ],
-            "is_aim_null_finding": False,
-        }
-
-    if call_type in ("discovery", "demo"):
-        results[13] = {
-            "framework_id": "FW-13",
-            "framework_name": "Deal Timing Intelligence",
-            "group": "A",
-            "score": 75.0,
-            "severity": "green",
-            "confidence": 0.80,
-            "headline": "Deal appears ready to advance",
-            "explanation": "Discovery call identified clear pain (manual process, 40 people affected), clear timeline (this quarter), and budget range ($50-80K). All discovery signals green.",
-            "coaching_recommendation": "Advance to demo with decision-makers present. Confirm availability of Sarah and Finance contact before scheduling.",
-            "evidence": [],
-            "is_aim_null_finding": False,
-        }
-
-    return results
-
-
-# ─── Routing Engine (from signalapp/domain/routing.py) ─────────────────────────
-
-PINNED_FRAMEWORKS = {8, 9, 15}
-
-ROUTING_TABLE = {
-    1: {"mandatory_for": set(), "blocked_for": set(), "required_signal": None},
-    2: {"mandatory_for": set(), "blocked_for": set(), "required_signal": None},
-    3: {"mandatory_for": {"pricing", "negotiation", "close"}, "blocked_for": {"check_in"}, "required_signal": "has_competitor_mention"},
-    4: {"mandatory_for": {"pricing", "negotiation"}, "blocked_for": {"discovery", "demo", "check_in"}, "required_signal": "has_pricing_discussion"},
-    5: {"mandatory_for": set(), "blocked_for": set(), "required_signal": "has_rep_questions"},
-    6: {"mandatory_for": set(), "blocked_for": set(), "required_signal": None},
-    7: {"mandatory_for": {"pricing", "negotiation"}, "blocked_for": {"discovery", "demo", "check_in"}, "required_signal": "has_numeric_anchor"},
-    8: {"mandatory_for": set(), "blocked_for": set(), "required_signal": None, "is_pinned": True},
-    9: {"mandatory_for": set(), "blocked_for": set(), "required_signal": None, "is_pinned": True},
-    10: {"mandatory_for": set(), "blocked_for": {"check_in"}, "required_signal": None},
-    11: {"mandatory_for": {"demo", "pricing", "negotiation", "close"}, "blocked_for": {"check_in"}, "required_signal": "has_close_language"},
-    12: {"mandatory_for": {"negotiation", "close"}, "blocked_for": {"discovery", "demo", "check_in"}, "required_signal": "has_close_language"},
-    13: {"mandatory_for": {"discovery", "demo"}, "blocked_for": {"pricing", "negotiation", "close", "check_in"}, "required_signal": None},
-    14: {"mandatory_for": set(), "blocked_for": {"check_in"}, "required_signal": None},
-    15: {"mandatory_for": set(), "blocked_for": set(), "required_signal": None, "is_pinned": True},
-    16: {"mandatory_for": set(), "blocked_for": {"check_in"}, "required_signal": "has_objection_markers"},
-    17: {"mandatory_for": set(), "blocked_for": {"check_in"}, "required_signal": None},
+CALL_TYPE_DESC = {
+    "discovery": "Initial exploratory conversation",
+    "demo": "Product demonstration",
+    "pricing": "Pricing and packaging discussion",
+    "negotiation": "Active deal negotiation",
+    "close": "Closing conversation",
+    "check_in": "Post-sale check-in",
+    "other": "Other call type",
 }
 
-DEPENDENCY_RULES = [(9, {8}), (14, {5, 15}), (17, {16})]
-GROUP_MEMBERSHIP = {
-    "A": {3, 4, 7, 12, 13},
-    "B": {1, 2, 6, 16},
-    "C": {5, 10, 11, 14, 15, 17},
-    "D": set(),
-    "E": {8, 9},
+# Framework group labels
+FW_GROUPS = {
+    "A": ("Negotiation Intelligence", ["BATNA Detection", "Money Left on Table", "First Number Tracker", "Deal Health at Close", "Deal Timing Intelligence"]),
+    "B": ("Pragmatic Intelligence", ["Unanswered Questions", "Commitment Quality", "Commitment Thermometer", "Pushback Classification"]),
+    "C": ("Strategic Clarity", ["Question Quality", "Frame Match Score", "Close Attempt Analysis", "Methodology Compliance", "Call Structure Analysis", "Objection Response Score"]),
+    "E": ("Emotional Resonance", ["Emotional Turning Points", "Emotional Trigger Analysis"]),
 }
+FW_NAME_TO_GROUP = {}
+for gid, (_, names) in FW_GROUPS.items():
+    for name in names:
+        FW_NAME_TO_GROUP[name] = gid
 
 
-def extract_signals(transcript: str, call_type: str) -> dict:
-    """Extract Pass1GateSignals from transcript text."""
-    text_lower = transcript.lower()
+# ── API helpers ────────────────────────────────────────────────────────────────
 
-    signals = {
-        "has_competitor_mention": bool(re.search(r"competitor|alternative|solution|options|other (?:company|provider|vendor)", text_lower)),
-        "has_pricing_discussion": bool(re.search(r"price|cost|discount|\$|fee|budget|payment|quot", text_lower)),
-        "has_numeric_anchor": bool(re.search(r"\$[\d,]+|[\d,]+ (?:percent|k\b|thousand|million)", text_lower)),
-        "has_objection_markers": bool(re.search(r"high|expensive|concern|concerned|doubt|uncomfortable|hesitant|not sure", text_lower)),
-        "has_rep_questions": transcript.count("?") >= 3,
-        "has_close_language": bool(re.search(r"sign|approve|commit|final|next step|schedule|payment", text_lower)),
-        "call_duration_minutes": len(transcript) / 100,  # rough estimate
+def api_get(path: str, timeout: float = 10.0):
+    import requests
+    try:
+        return requests.get(f"{BACKEND_URL}{path}", timeout=timeout)
+    except Exception as e:
+        return type("R", (), {"status_code": 0, "text": str(e), "json": lambda: {}})()
+
+
+def api_post(path: str, json: dict, timeout: float = 120.0):
+    import requests
+    try:
+        return requests.post(f"{BACKEND_URL}{path}", json=json, timeout=timeout)
+    except Exception as e:
+        return type("R", (), {"status_code": 0, "text": str(e), "json": lambda: {}})()
+
+
+def backend_online() -> bool:
+    return api_get("/health", timeout=3).status_code == 200
+
+
+def fetch_all_calls():
+    r = api_get("/api/v1/calls/", timeout=10)
+    return r.json().get("calls", []) if r.status_code == 200 else []
+
+
+def fetch_dashboard_summary():
+    """Single-query dashboard data — no N+1."""
+    r = api_get("/api/v1/insights/dashboard-summary", timeout=15)
+    return r.json() if r.status_code == 200 else {}
+
+
+def fetch_insights(call_id: str):
+    r = api_get(f"/api/v1/insights/call/{call_id}", timeout=10)
+    return r.json() if r.status_code == 200 else None
+
+
+def fetch_metrics(call_id: str):
+    r = api_get(f"/api/v1/calls/{call_id}/metrics", timeout=10)
+    return r.json().get("metrics", {}) if r.status_code == 200 else {}
+
+
+def fetch_transcript(call_id: str) -> list[dict]:
+    r = api_get(f"/api/v1/calls/{call_id}/transcript", timeout=10)
+    return r.json() if r.status_code == 200 else []
+
+
+# ── Page Config & CSS ──────────────────────────────────────────────────────────
+
+st.set_page_config(
+    page_title="Signal — Behavioral Intelligence",
+    page_icon="🔊",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
+
+st.html(f"""
+<style>
+/* ── Dark Theme ── */
+:root {{
+    --bg: {BG_PRIMARY}; --card: {BG_CARD}; --elevated: {BG_ELEVATED};
+    --border: {BORDER}; --text: {TEXT_PRIMARY}; --text-2: {TEXT_SECONDARY}; --text-m: {TEXT_MUTED};
+    --accent: {ACCENT}; --accent-dark: {ACCENT_DARK};
+    --red: {RED}; --orange: {ORANGE}; --yellow: {YELLOW}; --green: {GREEN};
+}}
+.stApp {{ background: {BG_PRIMARY} !important; color: {TEXT_PRIMARY}; }}
+[data-testid="stAppViewContainer"] {{ background: {BG_PRIMARY} !important; }}
+[data-testid="stHeader"] {{ background: {BG_PRIMARY} !important; }}
+.stMarkdownContent {{ color: {TEXT_PRIMARY}; }}
+h1, h2, h3, h4, h5, h6 {{ color: {TEXT_PRIMARY} !important; }}
+p, li, span, div {{ color: {TEXT_PRIMARY}; }}
+
+/* Sidebar */
+[data-testid="stSidebar"] {{ background: {BG_CARD} !important; border-right: 1px solid {BORDER}; }}
+[data-testid="stSidebar"] p, [data-testid="stSidebar"] span {{ color: {TEXT_SECONDARY}; }}
+
+/* Inputs */
+[data-testid="stTextInput"] input, [data-testid="stTextArea"] textarea,
+.stSelectbox > div > div {{ background: {BG_INPUT} !important; color: {TEXT_PRIMARY} !important; border-color: {BORDER} !important; }}
+label {{ color: {TEXT_SECONDARY} !important; }}
+
+/* Cards */
+.dark-card {{ background: {BG_CARD}; border: 1px solid {BORDER}; border-radius: 12px; padding: 20px; }}
+.dark-card:hover {{ border-color: {ACCENT}; transition: border-color 0.2s; }}
+
+/* Stat card */
+.stat-card {{ background: {BG_CARD}; border: 1px solid {BORDER}; border-radius: 12px; padding: 18px 20px; }}
+.stat-val {{ font-size: 26px; font-weight: 700; line-height: 1.1; }}
+.stat-label {{ font-size: 12px; color: {TEXT_MUTED}; margin-top: 4px; }}
+
+/* Insight cards */
+.insight-card {{ background: {BG_CARD}; border: 1px solid {BORDER}; border-radius: 12px; padding: 16px 18px; margin-bottom: 10px; border-left: 4px solid {BORDER}; }}
+.insight-card:hover {{ border-color: {ACCENT}; }}
+.insight-card.red    {{ border-left-color: {RED}; }}
+.insight-card.orange {{ border-left-color: {ORANGE}; }}
+.insight-card.yellow {{ border-left-color: {YELLOW}; }}
+.insight-card.green  {{ border-left-color: {GREEN}; }}
+
+/* Severity badges */
+.sev-badge {{ display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }}
+.sev-badge.red {{ background: #5C1E1E; color: #FCA5A5; }}
+.sev-badge.orange {{ background: #5C3A1E; color: #FDBA74; }}
+.sev-badge.yellow {{ background: #5C4E1E; color: #FDE047; }}
+.sev-badge.green {{ background: #1E5C3A; color: #86EFAC; }}
+
+/* Call type badges */
+.ct-badge {{ display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: capitalize; }}
+.ct-badge.discovery {{ background: #312E81; color: #C4B5FD; }}
+.ct-badge.demo {{ background: #1E3A5F; color: #93C5FD; }}
+.ct-badge.pricing {{ background: #5C4E1E; color: #FDE047; }}
+.ct-badge.negotiation {{ background: #5C3A1E; color: #FDBA74; }}
+.ct-badge.close {{ background: #1E5C3A; color: #86EFAC; }}
+.ct-badge.check_in {{ background: {BG_ELEVATED}; color: {TEXT_SECONDARY}; }}
+
+/* Transcript — REP = blue tint, BUYER = amber tint */
+.transcript-seg {{ padding: 8px 12px; border-radius: 6px; margin-bottom: 4px; font-size: 13px; line-height: 1.6; }}
+.transcript-seg.rep {{ background: rgba(59,130,246,0.12); border-left: 3px solid #3B82F6; }}
+.transcript-seg.buyer {{ background: rgba(245,158,11,0.12); border-left: 3px solid #F59E0B; }}
+.transcript-seg.unknown {{ background: {BG_ELEVATED}; border-left: 3px solid {BORDER}; }}
+.transcript-seg .ts {{ color: {TEXT_MUTED}; font-size: 11px; margin-right: 8px; font-family: 'JetBrains Mono', monospace; }}
+.transcript-seg .speaker {{ font-weight: 600; margin-right: 6px; }}
+.transcript-seg.rep .speaker {{ color: #60A5FA; }}
+.transcript-seg.buyer .speaker {{ color: #FBBF24; }}
+
+/* Tabs */
+.stTabs [data-baseweb="tab-list"] {{ background: {BG_CARD}; border-bottom: 1px solid {BORDER}; }}
+.stTabs [data-baseweb="tab"] {{ color: {TEXT_SECONDARY} !important; font-weight: 600; font-size: 13px; }}
+.stTabs [aria-selected="true"] {{ border-bottom: 2px solid {ACCENT} !important; color: {ACCENT} !important; }}
+
+/* Evidence quote */
+.evidence-quote {{ background: {BG_ELEVATED}; border-left: 2px solid {ACCENT}; padding: 6px 10px; font-size: 12px; color: {TEXT_SECONDARY}; border-radius: 0 6px 6px 0; font-style: italic; margin: 4px 0; }}
+
+/* Coaching box */
+.coaching-box {{ background: rgba(20,184,166,0.08); border: 1px solid rgba(20,184,166,0.25); border-radius: 8px; padding: 12px 14px; font-size: 13px; color: {TEXT_PRIMARY}; }}
+
+/* Loading */
+@keyframes pulse-dot {{ 0%, 80%, 100% {{ transform: scale(0.6); opacity: 0.4; }} 40% {{ transform: scale(1); opacity: 1; }} }}
+
+/* Buttons */
+.stButton > button[kind="primary"] {{ background: linear-gradient(135deg, {ACCENT}, {ACCENT_DARK}) !important; color: white !important; border: none !important; border-radius: 8px; font-weight: 600; }}
+.stButton > button[kind="primary"]:hover {{ box-shadow: 0 0 20px {ACCENT_GLOW}; }}
+.stButton > button[kind="secondary"] {{ background: {BG_ELEVATED} !important; color: {TEXT_PRIMARY} !important; border: 1px solid {BORDER} !important; border-radius: 8px; }}
+
+/* Progress bar */
+.stProgress > div > div > div > div {{ background: linear-gradient(90deg, {ACCENT}, {ACCENT_DARK}); }}
+
+/* Expander */
+[data-testid="stExpander"] {{ background: {BG_CARD}; border: 1px solid {BORDER}; border-radius: 8px; }}
+[data-testid="stExpander"] summary {{ color: {TEXT_PRIMARY} !important; }}
+
+/* Alert overrides — each type gets a subtle tinted background */
+[data-testid="stAlert"] {{ color: {TEXT_PRIMARY} !important; }}
+[data-testid="stAlert"] p {{ color: {TEXT_PRIMARY} !important; }}
+[data-testid="stAlert"][data-baseweb*="notification"] {{ background: {BG_ELEVATED} !important; border: 1px solid {BORDER} !important; }}
+div[data-testid="stAlert"] {{ background: {BG_ELEVATED} !important; border: 1px solid {BORDER} !important; }}
+/* Info alert */
+.stAlert {{ background: {BG_ELEVATED} !important; border: 1px solid {BORDER} !important; }}
+.stAlert p, .stAlert span, .stAlert div {{ color: {TEXT_PRIMARY} !important; }}
+
+/* Caption */
+[data-testid="stCaptionContainer"] {{ color: {TEXT_MUTED} !important; }}
+[data-testid="stCaptionContainer"] p {{ color: {TEXT_MUTED} !important; }}
+.stCaption {{ color: {TEXT_MUTED} !important; }}
+
+/* Markdown text */
+.stMarkdown p {{ color: {TEXT_PRIMARY} !important; }}
+.stMarkdown li {{ color: {TEXT_PRIMARY} !important; }}
+.stMarkdown strong {{ color: {TEXT_PRIMARY} !important; }}
+.stMarkdown code {{ background: {BG_ELEVATED} !important; color: {ACCENT} !important; }}
+
+/* Selectbox dropdown */
+[data-baseweb="select"] {{ background: {BG_INPUT} !important; }}
+[data-baseweb="select"] * {{ color: {TEXT_PRIMARY} !important; }}
+[data-baseweb="popover"] {{ background: {BG_CARD} !important; }}
+[data-baseweb="menu"] {{ background: {BG_CARD} !important; }}
+[data-baseweb="menu"] li {{ color: {TEXT_PRIMARY} !important; }}
+[data-baseweb="menu"] li:hover {{ background: {BG_ELEVATED} !important; }}
+
+/* Date input */
+[data-testid="stDateInput"] input {{ background: {BG_INPUT} !important; color: {TEXT_PRIMARY} !important; border-color: {BORDER} !important; }}
+
+/* Column containers — prevent white gaps */
+[data-testid="stHorizontalBlock"] {{ background: transparent !important; }}
+[data-testid="column"] {{ background: transparent !important; }}
+
+/* Divider */
+hr {{ border-color: {BORDER} !important; }}
+
+/* Scrollbar */
+::-webkit-scrollbar {{ width: 6px; }}
+::-webkit-scrollbar-track {{ background: {BG_PRIMARY}; }}
+::-webkit-scrollbar-thumb {{ background: {BORDER}; border-radius: 3px; }}
+</style>
+""")
+
+
+# ── Helpers ────────────────────────────────────────────────────────────────────
+
+def sev_color(sev: str) -> tuple:
+    return SEV_COLORS.get(sev.lower(), (TEXT_MUTED, BG_ELEVATED))
+
+
+def sev_dot(sev: str) -> str:
+    color, _ = sev_color(sev)
+    return f'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:{color}" title="{sev.upper()}"></span>'
+
+
+def _detect_format(text: str) -> str:
+    import re
+    lines = [l.strip() for l in text.strip().split("\n") if l.strip()][:5]
+    for line in lines:
+        if re.match(r"\[\d+:\d+\]", line):  return "Signal format"
+        if re.match(r"\d{2}:\d{2}:\d{2}\s+\w+", line):  return "Zoom format"
+        if re.match(r".+\s+\[\d{2}:\d{2}:\d{2}\]", line):  return "Gong format"
+        if re.match(r".+\s+\d{2}:\d{2}", line):  return "Otter format"
+    for line in lines:
+        if ":" in line:  return "Speaker: text"
+    return "Plain text"
+
+
+def _fw_group_for(fw_name: str) -> str:
+    """Match framework name to group, using fuzzy substring matching."""
+    # Exact match first
+    g = FW_NAME_TO_GROUP.get(fw_name)
+    if g:
+        return g
+    # Fuzzy: check if any known name is a substring of fw_name or vice versa
+    fw_lower = fw_name.lower()
+    for known_name, group_id in FW_NAME_TO_GROUP.items():
+        if known_name.lower() in fw_lower or fw_lower in known_name.lower():
+            return group_id
+    # Keyword fallback
+    kw_map = {
+        "A": ["batna", "money left", "first number", "deal health", "deal timing", "negotiat"],
+        "B": ["unanswered", "commitment", "thermometer", "pushback"],
+        "C": ["question quality", "frame match", "close attempt", "methodology", "call structure", "objection"],
+        "E": ["emotion", "turning point", "trigger"],
     }
-    return signals
+    for group_id, keywords in kw_map.items():
+        if any(kw in fw_lower for kw in keywords):
+            return group_id
+    return "Other"
 
 
-def should_run_framework(fw_id: int, call_type: str, signals: dict) -> tuple[str, str, bool]:
-    """Returns (decision, reason, is_aim)."""
-    spec = ROUTING_TABLE.get(fw_id, {})
-
-    # Pinned
-    if spec.get("is_pinned") or fw_id in PINNED_FRAMEWORKS:
-        return "RUN", "Pinned — always runs", False
-
-    # Blocked
-    if call_type in spec.get("blocked_for", set()):
-        return "BLOCK", f"Blocked for {call_type}", False
-
-    # Mandatory (AIM)
-    if call_type in spec.get("mandatory_for", set()):
-        return "RUN", f"AIM: mandatory on {call_type}", True
-
-    # Content-gated
-    required_signal = spec.get("required_signal")
-    if required_signal and not signals.get(required_signal, False):
-        return "BLOCK", f"No signal: {required_signal}", False
-
-    return "RUN", "Universal framework", False
+SAMPLE_TRANSCRIPT = """[00:00] Alex (rep): Thanks for joining today, Jordan. I wanted to walk through the pricing proposal we discussed last week.
+[00:15] Jordan (buyer): Sure, happy to dig in. We've been evaluating a few options including Competitor X.
+[00:30] Alex (rep): Great. So our enterprise plan is $45,000 annually. That includes full platform access and priority support.
+[00:52] Jordan (buyer): That's higher than we expected. Competitor X quoted us around $30,000 for similar features.
+[01:15] Alex (rep): I understand the concern. Our platform includes advanced behavioral analytics that Competitor X doesn't offer. Can I walk you through the ROI model?
+[01:35] Jordan (buyer): Sure, but I need to be upfront — our budget is capped at $38,000.
+[01:50] Alex (rep): I appreciate the transparency. Let me see what I can do. If we go with annual billing, I could bring it down to $40,000.
+[02:10] Jordan (buyer): That's still above budget. What about a phased rollout? Maybe start with fewer seats?
+[02:30] Alex (rep): We could do a pilot with 50 seats at $32,000, then expand after Q2 results.
+[02:48] Jordan (buyer): That sounds more workable. I'd need to get approval from our VP, but I think we can move forward with the pilot.
+[03:05] Alex (rep): Excellent. What's the timeline for getting that approval?
+[03:15] Jordan (buyer): Probably by end of next week. I'll loop in my procurement team.
+[03:30] Alex (rep): Perfect. I'll send over a pilot agreement draft today. Anything else you need from our side?
+[03:45] Jordan (buyer): Just make sure the implementation timeline is realistic. We've been burned before with long onboarding.
+[04:00] Alex (rep): Absolutely. Our standard pilot onboarding is 2 weeks. I'll include that in the proposal.
+[04:15] Jordan (buyer): Sounds good. Let's plan to reconnect next Wednesday to finalize."""
 
 
-def route_frameworks(call_type: str, signals: dict) -> tuple[set[int], list[dict]]:
-    """Returns (active_ids, decisions)."""
-    decisions = []
-    active = set()
+# ═══════════════════════════════════════════════════════════════════════════════
+# PAGES
+# ═══════════════════════════════════════════════════════════════════════════════
 
-    for fw_id in range(1, 18):
-        decision, reason, is_aim = should_run_framework(fw_id, call_type, signals)
-        chip = "pinned" if (spec := ROUTING_TABLE.get(fw_id, {})).get("is_pinned") or fw_id in PINNED_FRAMEWORKS else decision.lower()
-        decisions.append({
-            "fw_id": fw_id,
-            "name": FRAMEWORK_REGISTRY.get(fw_id, {}).get("name", f"FW-{fw_id:02d}"),
-            "group": FRAMEWORK_REGISTRY.get(fw_id, {}).get("group", "?"),
-            "decision": decision,
-            "reason": reason,
-            "chip": chip,
-            "is_aim": is_aim,
-        })
-        if decision == "RUN":
-            active.add(fw_id)
+def page_dashboard():
+    calls = fetch_all_calls()
+    ready_calls = [c for c in calls if c.get("processing_status") == "ready"]
+    processing_calls = [c for c in calls if c.get("processing_status") == "processing"]
 
-    # Enforce dependencies
-    changed = True
-    while changed:
-        changed = False
-        for dependent, requirements in DEPENDENCY_RULES:
-            if dependent in active and not requirements.issubset(active):
-                active.discard(dependent)
-                changed = True
+    if not calls:
+        st.html(f"""
+        <div style="text-align:center;padding:80px 20px">
+            <div style="font-size:56px;margin-bottom:16px">🔊</div>
+            <div style="font-size:24px;font-weight:700;color:{TEXT_PRIMARY};margin-bottom:8px">Welcome to Signal</div>
+            <div style="font-size:14px;color:{TEXT_SECONDARY};max-width:440px;margin:0 auto 32px;line-height:1.6">
+                Post-call behavioral intelligence for sales teams.
+                Analyze transcripts to surface coaching insights, detect negotiation patterns,
+                and improve rep performance with 17 behavioral frameworks.
+            </div>
+            <div style="display:flex;gap:16px;justify-content:center;margin-bottom:24px">
+                <div style="background:{BG_CARD};border:1px solid {BORDER};border-radius:8px;padding:12px 20px;text-align:center">
+                    <div style="font-size:24px;margin-bottom:4px">📋</div>
+                    <div style="font-size:12px;color:{TEXT_MUTED}">Paste a transcript</div>
+                </div>
+                <div style="background:{BG_CARD};border:1px solid {BORDER};border-radius:8px;padding:12px 20px;text-align:center">
+                    <div style="font-size:24px;margin-bottom:4px">🧠</div>
+                    <div style="font-size:12px;color:{TEXT_MUTED}">17 AI frameworks analyze</div>
+                </div>
+                <div style="background:{BG_CARD};border:1px solid {BORDER};border-radius:8px;padding:12px 20px;text-align:center">
+                    <div style="font-size:24px;margin-bottom:4px">💡</div>
+                    <div style="font-size:12px;color:{TEXT_MUTED}">Get coaching insights</div>
+                </div>
+            </div>
+        </div>
+        """)
+        c1, c2, _ = st.columns([1, 1, 2])
+        with c1:
+            if st.button("🚀 Analyze Your First Call", type="primary"):
+                st.session_state["view"] = "submit"
+                st.rerun()
+        with c2:
+            if st.button("📋 Try Sample Transcript"):
+                st.session_state["view"] = "submit"
+                st.session_state["_load_sample"] = True
+                st.rerun()
+        return
 
-    # Short call guard
-    if signals.get("call_duration_minutes", 0) < 8:
-        active -= {13, 14}
+    # ── Single-query dashboard summary ──
+    dash = fetch_dashboard_summary()
+    avg_conf = f"{dash.get('avg_confidence', 0) * 100:.0f}%" if dash.get("avg_confidence") else "—"
+    top_theme = dash.get("top_coaching_theme", "—") or "—"
+    if len(top_theme) > 25:
+        top_theme = top_theme[:23] + "..."
 
-    return active, decisions
+    from datetime import timedelta
+    week_ago = (datetime.utcnow() - timedelta(days=7)).isoformat()
+    calls_this_week = sum(1 for c in calls if (c.get("created_at") or "") >= week_ago)
 
+    # ── Stat Cards Row ──
+    st.html(f"""
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px">
+        <div style="background:{BG_CARD};border:1px solid {BORDER};border-radius:12px;padding:20px">
+            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:{TEXT_MUTED};margin-bottom:8px">Total Calls</div>
+            <div style="font-size:32px;font-weight:800;color:{TEXT_PRIMARY};line-height:1">{len(calls)}</div>
+            <div style="font-size:12px;color:{TEXT_MUTED};margin-top:4px">{len(ready_calls)} analyzed · {len(processing_calls)} processing</div>
+        </div>
+        <div style="background:{BG_CARD};border:1px solid {BORDER};border-radius:12px;padding:20px">
+            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:{TEXT_MUTED};margin-bottom:8px">This Week</div>
+            <div style="font-size:32px;font-weight:800;color:{ACCENT};line-height:1">{calls_this_week}</div>
+            <div style="font-size:12px;color:{TEXT_MUTED};margin-top:4px">calls submitted</div>
+        </div>
+        <div style="background:{BG_CARD};border:1px solid {BORDER};border-radius:12px;padding:20px">
+            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:{TEXT_MUTED};margin-bottom:8px">Avg Confidence</div>
+            <div style="font-size:32px;font-weight:800;color:{ACCENT};line-height:1">{avg_conf}</div>
+            <div style="font-size:12px;color:{TEXT_MUTED};margin-top:4px">across all insights</div>
+        </div>
+        <div style="background:{BG_CARD};border:1px solid {BORDER};border-radius:12px;padding:20px">
+            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:{TEXT_MUTED};margin-bottom:8px">Top Coaching Theme</div>
+            <div style="font-size:16px;font-weight:700;color:{ORANGE};line-height:1.2;margin-top:4px">{top_theme}</div>
+            <div style="font-size:12px;color:{TEXT_MUTED};margin-top:4px">most frequent issue</div>
+        </div>
+    </div>
+    """)
 
-def get_active_groups(active: set[int]) -> list[str]:
-    return [gid for gid, members in GROUP_MEMBERSHIP.items() if active & members]
+    # ── Two-column layout: Attention + Rep Overview ──
+    col_left, col_right = st.columns([3, 2])
 
+    with col_left:
+        # Calls Needing Attention
+        st.html(f"""
+        <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:{TEXT_MUTED};margin-bottom:12px;display:flex;align-items:center;gap:8px">
+            <span style="width:6px;height:6px;border-radius:50%;background:{RED}"></span>
+            Calls Needing Attention
+        </div>
+        """)
 
-# ─── Transcript Parsing ────────────────────────────────────────────────────────
+        attention = dash.get("attention_calls", [])
+        if attention:
+            for item in attention[:5]:
+                sev = item.get("severity", "yellow")
+                color, _ = sev_color(sev)
+                deal = item.get("deal_name") or item.get("rep_name", "Unknown")
+                headline = item.get("headline", "")[:70]
+                fw = item.get("framework_name", "")[:25]
 
-def parse_transcript(text: str) -> list[dict]:
-    """Parse simple [MM:SS] Speaker (role): text format."""
-    segments = []
-    pattern = r"\[(\d{2}):(\d{2})\]\s*(\w+)\s*\((\w+)\):\s*(.+)"
-    for match in re.finditer(pattern, text):
-        mins, secs, speaker, role, content = match.groups()
-        start_ms = int(mins) * 60 * 1000 + int(secs) * 1000
-        segments.append({
-            "start_ms": start_ms,
-            "start_str": f"{int(mins):02d}:{int(secs):02d}",
-            "speaker": speaker,
-            "role": role,
-            "text": content.strip(),
-        })
-    return segments
+                st.html(f"""
+                <div style="background:{BG_CARD};border:1px solid {BORDER};border-radius:10px;padding:14px 16px;margin-bottom:8px;border-left:3px solid {color}">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                        <div style="flex:1">
+                            <div style="font-size:14px;font-weight:600;color:{TEXT_PRIMARY};margin-bottom:3px">{deal}</div>
+                            <div style="font-size:12px;color:{TEXT_SECONDARY};margin-bottom:6px">{headline}</div>
+                            <div style="display:flex;gap:8px;align-items:center">
+                                <span class="sev-badge {sev}" style="font-size:9px">{sev.upper()}</span>
+                                <span style="font-size:11px;color:{TEXT_MUTED}">{item.get('rep_name','')} · {item.get('call_type','').title()}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                """)
 
-
-def compute_base_metrics(segments: list[dict]) -> dict:
-    """Compute base metrics from transcript segments."""
-    if not segments:
-        return {}
-
-    total_duration_ms = segments[-1]["start_ms"]
-    total_words = sum(len(s["text"].split()) for s in segments)
-
-    rep_segments = [s for s in segments if s["role"] == "rep"]
-    buyer_segments = [s for s in segments if s["role"] == "buyer"]
-
-    rep_words = sum(len(s["text"].split()) for s in rep_segments)
-    buyer_words = sum(len(s["text"].split()) for s in buyer_segments)
-    total_words_all = rep_words + buyer_words
-
-    return {
-        "duration_minutes": round(total_duration_ms / 60000, 1),
-        "total_segments": len(segments),
-        "rep_segments": len(rep_segments),
-        "buyer_segments": len(buyer_segments),
-        "rep_words": rep_words,
-        "buyer_words": buyer_words,
-        "rep_talk_pct": round(100 * rep_words / max(total_words_all, 1), 1),
-        "buyer_talk_pct": round(100 * buyer_words / max(total_words_all, 1), 1),
-        "words_per_minute": round(60 * total_words / max(total_duration_ms / 1000, 1), 1),
-        "question_count": sum(1 for s in segments if "?" in s["text"]),
-    }
-
-
-# ─── UI Components ─────────────────────────────────────────────────────────────
-
-def severity_badge(severity: str):
-    color_map = {
-        "red": ("#EF4444", "#FEE2E2"),
-        "orange": ("#F97316", "#FFEDD5"),
-        "yellow": ("#EAB308", "#FEF9C3"),
-        "green": ("#22C55E", "#F0FDF4"),
-    }
-    color, bg = color_map.get(severity, ("#6B7280", "#F3F4F6"))
-    return f'<span style="background:{bg};color:{color};padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px">{severity}</span>'
-
-
-def render_insight_card(result: dict):
-    """Render an insight card using native Streamlit components (no raw HTML)."""
-    sev = result.get("severity", "yellow")
-    sev_upper = sev.upper()
-    sev_color = {"red": "🔴", "orange": "🟠", "yellow": "🟡", "green": "🟢"}.get(sev, "⚪")
-    score = result.get("score")
-    score_str = f"{score:.0f}" if score else "N/A"
-
-    # Header row
-    header_col1, header_col2 = st.columns([0.85, 0.15])
-    with header_col1:
-        st.markdown(f"**{result.get('framework_name', '')}** | {sev_color} {sev_upper} | Score: **{score_str}**")
-    with header_col2:
-        pass
-
-    st.markdown(f"**{result.get('headline', '')}**")
-    st.caption(result.get("explanation", ""))
-
-    # Evidence
-    for ev in result.get("evidence", [])[:3]:
-        ts = ev.get("timestamp", "00:00")
-        speaker = ev.get("speaker", "")
-        quote = ev.get("quote", "")
-        st.markdown(f"> `[{ts}]` **{speaker}:** \"{quote}\"")
-
-    # AIM note
-    if result.get("is_aim_null_finding"):
-        st.markdown(":purple[🔮 **AIM null-finding:** absence is meaningful here]")
-
-    # Coaching
-    coaching = result.get("coaching_recommendation", "")
-    if coaching:
-        st.info(f"💡 **Coaching:** {coaching}")
-
-    st.divider()
-
-
-def render_transcript_segment(seg: dict, active_ts: str = None):
-    """Render a transcript segment using native Streamlit components."""
-    role = seg.get("role", "unknown")
-    is_active = seg.get("start_str") == active_ts
-
-    ts_str = seg.get("start_str", "00:00")
-    speaker = seg.get("speaker", "Unknown")
-    text = seg.get("text", "")
-
-    role_color = "blue" if role == "rep" else "orange"
-    bg_style = "background: #F0FDF4; border-left: 3px solid #0D9488; padding: 8px; border-radius: 4px;" if is_active else ""
-
-    if bg_style:
-        st.markdown(f":blue[[{ts_str}] ]:blue[**{speaker}:**] {text}")
-    else:
-        st.markdown(f"[{ts_str}] **{speaker}:** {text}")
-
-
-# ─── Pages ────────────────────────────────────────────────────────────────────
-
-def page_analyze():
-    """Upload / paste transcript and trigger analysis."""
-    st.header("🔍 Analyze a Call")
-    st.markdown("Upload an audio file or paste a transcript to run the full Signal analysis pipeline.")
-
-    tab_audio, tab_paste = st.tabs(["📁 Upload Audio", "📋 Paste Transcript"])
-
-    call_type = None
-    rep_name = ""
-    deal_name = ""
-    transcript_text = ""
-    audio_uploaded = False
-
-    with tab_paste:
-        st.info("📝 Paste a transcript in the format: `[00:00] Speaker (rep): text`", icon="ℹ️")
-        transcript_text = st.text_area(
-            "Transcript",
-            height=300,
-            placeholder="[00:00] Alex (rep): Thanks for joining today...\n[00:15] Jordan (buyer): Happy to be here...",
-        )
-
-        col1, col2 = st.columns(2)
-        with col1:
-            rep_name = st.text_input("Rep Name", value="", placeholder="e.g. Alex")
-        with col2:
-            call_type = st.selectbox("Call Type", options=CALL_TYPES, index=0)
-
-        deal_name = st.text_input("Deal Name (optional)", value="", placeholder="e.g. Acme Corp Q2 Deal")
-
-        if transcript_text:
-            # Count question marks to detect rep questions
-            rep_q_count = sum(1 for s in parse_transcript(transcript_text) if s["role"] == "rep" and "?" in s["text"])
-            if rep_q_count > 0:
-                st.caption(f"Detected {rep_q_count} rep questions | {len(parse_transcript(transcript_text))} segments")
-
-    with tab_audio:
-        st.warning("⚠️ Audio upload requires ASR pipeline (AssemblyAI). Configure API key in .env to enable.", icon="🔑")
-        uploaded_file = st.file_uploader(
-            "Upload Audio",
-            type=["mp3", "wav", "m4a", "ogg", "webm", "mp4"],
-            help="Max 500MB, max 3 hours. Supported: mp3, wav, m4a, ogg, webm, mp4",
-        )
-        if uploaded_file:
-            st.success(f"✅ `{uploaded_file.name}` ({uploaded_file.size / 1024:.0f} KB) ready for ASR processing")
-            audio_uploaded = True
-
-        col1, col2 = st.columns(2)
-        with col1:
-            rep_name_audio = st.text_input("Rep Name", value="", key="rep_audio")
-        with col2:
-            call_type_audio = st.selectbox("Call Type", options=CALL_TYPES, index=0, key="type_audio")
-
-        deal_name_audio = st.text_input("Deal Name (optional)", value="", key="deal_audio")
-
-    submitted = st.button("🚀 Run Analysis", type="primary", use_container_width=True)
-
-    if submitted and (transcript_text or audio_uploaded):
-        # Use paste tab values if audio not uploaded
-        final_transcript = transcript_text if not audio_uploaded else SAMPLE_TRANSCRIPT_DISCOVERY
-        final_call_type = call_type if not audio_uploaded else call_type_audio
-        final_rep = rep_name if not audio_uploaded else rep_name_audio
-        final_deal = deal_name if not audio_uploaded else deal_name_audio
-
-        if not final_transcript.strip():
-            st.error("Please paste a transcript first.")
-        else:
-            with st.spinner("Sending to backend..."):
-                import requests
-                try:
-                    response = requests.post(
-                        f"{BACKEND_URL}/api/v1/calls/paste-transcript",
-                        json={
-                            "rep_name": final_rep or "Unknown",
-                            "call_type": final_call_type,
-                            "deal_name": final_deal or None,
-                            "transcript_text": final_transcript,
-                        },
-                        timeout=30,
-                    )
-                    response.raise_for_status()
-                    result_data = response.json()
-                    call_id = result_data.get("call_id")
-                    segments_count = result_data.get("segments_count", 0)
-                    st.session_state["backend_call_id"] = call_id
-                    st.session_state["backend_segments_count"] = segments_count
-                except requests.exceptions.ConnectionError:
-                    st.error(f"Could not connect to backend at {BACKEND_URL}. Is uvicorn running?")
-                    st.stop()
-                except requests.exceptions.HTTPError as e:
-                    st.error(f"Backend error: {e.response.status_code} — {e.response.text}")
-                    st.stop()
-                except Exception as e:
-                    st.error(f"Error: {str(e)}")
-                    st.stop()
-
-            with st.spinner("Running pipeline (first call may take 10-30s)..."):
-                import time
-                # Poll for results (pipeline runs synchronously in memory mode)
-                max_wait = 60
-                start = time.time()
-                last_status = "unknown"
-                insights_data = None
-                while time.time() - start < max_wait:
-                    try:
-                        resp = requests.get(
-                            f"{BACKEND_URL}/api/v1/calls/{call_id}",
-                            timeout=10,
-                        )
-                        if resp.status_code == 404:
-                            # Call not yet committed — keep polling
-                            time.sleep(2)
-                            continue
-                        if resp.status_code == 200:
-                            call_data = resp.json()
-                            last_status = call_data.get("processing_status", "unknown")
-                            if last_status == "ready":
-                                # Fetch insights
-                                insights_resp = requests.get(
-                                    f"{BACKEND_URL}/api/v1/insights/call/{call_id}",
-                                    timeout=10,
-                                )
-                                if insights_resp.status_code == 200:
-                                    insights_data = insights_resp.json()
-                                break
-                            elif last_status == "failed":
-                                st.error("Pipeline failed. Check backend logs for details.")
-                                st.stop()
-                        time.sleep(2)
-                    except Exception:
-                        pass
-
-                if insights_data is None:
-                    if last_status == "processing":
-                        st.info("Pipeline still running. The call has been saved — refresh the Calls list to check back later.")
-                    else:
-                        st.warning("Could not fetch results. Please check the backend logs.")
-                    st.session_state["view"] = "calls"
+                if st.button(f"Review →", key=f"attn_{item['call_id']}", type="secondary"):
+                    st.session_state["view_call_id"] = item["call_id"]
+                    st.session_state["view"] = "call_review"
                     st.rerun()
+        else:
+            st.html(f"""
+            <div style="background:{BG_CARD};border:1px solid {BORDER};border-radius:10px;padding:24px;text-align:center">
+                <div style="font-size:28px;margin-bottom:8px">✅</div>
+                <div style="font-size:14px;color:{TEXT_SECONDARY}">No urgent issues detected</div>
+                <div style="font-size:12px;color:{TEXT_MUTED}">All analyzed calls look healthy</div>
+            </div>
+            """)
 
-            # Build segments from transcript for display
-            segments = parse_transcript(final_transcript)
-            signals = extract_signals(final_transcript, final_call_type)
-            active, routing_decisions = route_frameworks(final_call_type, signals)
-            active_groups = get_active_groups(active)
-            metrics = compute_base_metrics(segments)
+    with col_right:
+        # Rep Overview
+        st.html(f"""
+        <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:{TEXT_MUTED};margin-bottom:12px;display:flex;align-items:center;gap:8px">
+            <span style="width:6px;height:6px;border-radius:50%;background:{ACCENT}"></span>
+            Rep Overview
+        </div>
+        """)
 
-            # Convert API insights to the format used by the UI
-            results = {}
-            if insights_data and insights_data.get("insights"):
-                for idx, ins in enumerate(insights_data["insights"]):
-                    fw_id = idx + 1  # Map by insertion order
-                    # Derive severity from framework name if not provided
-                    sev = ins.get("severity", "yellow")
-                    score = ins.get("confidence", 0.75) * 100
-                    results[fw_id] = {
-                        "framework_id": f"FW-{fw_id:02d}",
-                        "framework_name": ins.get("framework_name", f"Framework {fw_id}"),
-                        "group": "B",
-                        "score": score,
-                        "severity": sev if sev in ("red", "orange", "yellow", "green") else "yellow",
-                        "confidence": ins.get("confidence", 0.75),
-                        "headline": ins.get("headline", ""),
-                        "explanation": ins.get("explanation", ""),
-                        "coaching_recommendation": ins.get("coaching_recommendation", ""),
-                        "evidence": [
-                            {
-                                "timestamp": f"{e.get('timestamp', 0) // 60000:02d}:{(e.get('timestamp', 0) % 60000) // 1000:02d}",
-                                "speaker": e.get("speaker", ""),
-                                "quote": e.get("quote", ""),
-                            }
-                            for e in (ins.get("evidence") or [])
-                        ],
-                        "is_aim_null_finding": False,
-                    }
+        rep_data = {}
+        for c in calls:
+            rep = c.get("rep_name", "Unknown")
+            rep_data.setdefault(rep, {"total": 0, "ready": 0})
+            rep_data[rep]["total"] += 1
+            if c.get("processing_status") == "ready":
+                rep_data[rep]["ready"] += 1
 
-            # Store in session state
-            st.session_state["current_analysis"] = {
-                "call_type": final_call_type,
-                "rep_name": final_rep or "Unknown",
-                "deal_name": final_deal or "Unknown Deal",
-                "transcript": final_transcript,
-                "segments": segments,
-                "signals": signals,
-                "routing_decisions": routing_decisions,
-                "active_frameworks": active,
-                "active_groups": active_groups,
-                "results": results,
-                "metrics": metrics,
-                "from_backend": True,
-            }
+        if rep_data:
+            # Table header
+            st.html(f"""
+            <div style="display:grid;grid-template-columns:1fr 60px 70px;gap:8px;padding:6px 12px;border-bottom:1px solid {BORDER};margin-bottom:4px">
+                <div style="font-size:11px;font-weight:700;color:{TEXT_MUTED};text-transform:uppercase;letter-spacing:0.5px">Rep</div>
+                <div style="font-size:11px;font-weight:700;color:{TEXT_MUTED};text-transform:uppercase;letter-spacing:0.5px;text-align:center">Calls</div>
+                <div style="font-size:11px;font-weight:700;color:{TEXT_MUTED};text-transform:uppercase;letter-spacing:0.5px;text-align:center">Analyzed</div>
+            </div>
+            """)
+            for rep, data in sorted(rep_data.items(), key=lambda x: x[1]["total"], reverse=True):
+                pct = f"{data['ready']/data['total']*100:.0f}%" if data["total"] > 0 else "—"
+                st.html(f"""
+                <div style="display:grid;grid-template-columns:1fr 60px 70px;gap:8px;padding:8px 12px;border-radius:6px" onmouseover="this.style.background='{BG_ELEVATED}'" onmouseout="this.style.background='transparent'">
+                    <div style="font-size:13px;font-weight:500;color:{TEXT_PRIMARY}">{rep}</div>
+                    <div style="font-size:13px;color:{TEXT_SECONDARY};text-align:center">{data['total']}</div>
+                    <div style="font-size:13px;text-align:center">
+                        <span style="color:{ACCENT};font-weight:600">{data['ready']}</span>
+                        <span style="color:{TEXT_MUTED};font-size:11px"> ({pct})</span>
+                    </div>
+                </div>
+                """)
+        else:
+            st.caption("No reps found.")
 
-            st.success("✅ Analysis complete!")
+    # ── Recent Calls ──
+    st.html(f"""
+    <div style="margin-top:24px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:{TEXT_MUTED};margin-bottom:12px;display:flex;align-items:center;gap:8px">
+        <span style="width:6px;height:6px;border-radius:50%;background:{TEXT_MUTED}"></span>
+        Recent Calls
+    </div>
+    """)
+
+    sorted_calls = sorted(calls, key=lambda x: x.get("created_at", ""), reverse=True)[:10]
+    for c in sorted_calls:
+        status = c.get("processing_status", "unknown")
+        ct = c.get("call_type", "other")
+        d = (c.get("call_date") or c.get("created_at") or "")[:10]
+        deal = c.get("deal_name") or c.get("rep_name", "Unknown")
+        status_color = {
+            "ready": GREEN, "processing": YELLOW, "failed": RED
+        }.get(status, TEXT_MUTED)
+        status_label = status.upper()
+
+        st.html(f"""
+        <div style="display:grid;grid-template-columns:1fr 100px 80px 80px;gap:12px;align-items:center;padding:10px 14px;border-radius:8px;margin-bottom:2px;border-bottom:1px solid {BORDER}" onmouseover="this.style.background='{BG_ELEVATED}'" onmouseout="this.style.background='transparent'">
+            <div>
+                <div style="font-size:13px;font-weight:600;color:{TEXT_PRIMARY}">{deal}</div>
+                <div style="font-size:11px;color:{TEXT_MUTED}">{c.get('rep_name', '')} · {ct}</div>
+            </div>
+            <div style="text-align:center">
+                <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:{status_color}22;color:{status_color}">{status_label}</span>
+            </div>
+            <div style="font-size:12px;color:{TEXT_MUTED};text-align:center">{d if d else '—'}</div>
+            <div style="text-align:right"></div>
+        </div>
+        """)
+
+        if st.button("View →", key=f"v_{c['id']}", type="secondary"):
+            st.session_state["view_call_id"] = c["id"]
             st.session_state["view"] = "call_review"
             st.rerun()
 
 
 def page_calls_list():
-    """List of submitted calls."""
-    st.header("📞 All Calls")
+    st.markdown("### All Calls")
+    calls = fetch_all_calls()
 
-    # Demo calls for showcase
-    demo_calls = [
-        {"id": "call_001", "rep": "Alex", "type": "pricing", "deal": "Acme Corp Q2", "date": "Mar 22, 2026", "duration": "34:12", "status": "ready", "insight": "2 concessions worth ~$21K detected"},
-        {"id": "call_002", "rep": "Maya", "type": "discovery", "deal": "TechFlow Evaluation", "date": "Mar 20, 2026", "duration": "28:45", "status": "ready", "insight": "Strong discovery signals — advance to demo"},
-        {"id": "call_003", "rep": "Jordan", "type": "demo", "deal": "Startup Growth Plan", "date": "Mar 18, 2026", "duration": "41:03", "status": "ready", "insight": "Buyer evaded 3 budget questions"},
-        {"id": "call_004", "rep": "Sam", "type": "negotiation", "deal": "Enterprise Deal", "date": "Mar 15, 2026", "duration": "52:18", "status": "processing", "insight": "Processing... typically 5-10 minutes"},
-        {"id": "call_005", "rep": "Alex", "type": "close", "deal": "Q1 Renewal", "date": "Mar 10, 2026", "duration": "18:22", "status": "ready", "insight": "Close attempt at 14:30 — buyer deferred"},
-    ]
+    c1, c2, c3 = st.columns([2, 2, 1])
+    filter_rep = c1.text_input("Filter by rep", "")
+    filter_type = c2.selectbox("Call type", ["All"] + CALL_TYPES, index=0)
+    filter_status = c3.selectbox("Status", ["All", "ready", "processing", "failed"], index=0)
 
-    cols = st.columns([3, 1, 1, 1, 1, 1])
+    filtered = calls
+    if filter_rep:
+        filtered = [c for c in filtered if filter_rep.lower() in c.get("rep_name", "").lower()]
+    if filter_type != "All":
+        filtered = [c for c in filtered if c.get("call_type", "") == filter_type.lower()]
+    if filter_status != "All":
+        filtered = [c for c in filtered if c.get("processing_status", "") == filter_status]
 
-    # Header row
-    with cols[0]:
-        st.markdown("**Title**")
-    with cols[1]:
-        st.markdown("**Rep**")
-    with cols[2]:
-        st.markdown("**Type**")
-    with cols[3]:
-        st.markdown("**Date**")
-    with cols[4]:
-        st.markdown("**Duration**")
-    with cols[5]:
-        st.markdown("**Status**")
+    st.caption(f"Showing {len(filtered)} of {len(calls)} calls")
 
-    st.markdown("---")
+    if not filtered:
+        st.info("No calls match your filters.")
+        return
 
-    for c in demo_calls:
-        col_type = {
-            "discovery": "discovery",
-            "demo": "demo",
-            "pricing": "pricing",
-            "negotiation": "negotiation",
-            "close": "close",
-            "check_in": "check_in",
-        }.get(c["type"], "other")
-
-        with cols[0]:
-            title = f"**{c['deal']}**" if c["deal"] != "Unknown Deal" else f"**{c['rep']} — {c['type'].title()}**"
-            st.markdown(title)
-            st.caption(f"🔴 {c['insight']}")
-        with cols[1]:
-            st.markdown(c["rep"])
-        with cols[2]:
-            st.markdown(f"`{c['type']}`")
-        with cols[3]:
-            st.markdown(c["date"])
-        with cols[4]:
-            st.markdown(c["duration"])
-        with cols[5]:
-            status_map = {"ready": ("✅", "ready"), "processing": ("⏳", "processing"), "failed": ("❌", "failed")}
-            dot, status_cls = status_map.get(c["status"], ("◌", "processing"))
-            st.markdown(f"{dot} {c['status']}")
-
+    for c in sorted(filtered, key=lambda x: x.get("created_at", ""), reverse=True):
+        status = c.get("processing_status", "unknown")
+        ct = c.get("call_type", "other")
+        dot = {"ready": "🟢", "processing": "🟡", "failed": "🔴"}.get(status, "⚪")
+        row = st.columns([4, 1, 1, 1, 1])
+        with row[0]:
+            st.markdown(f"**{c.get('deal_name') or c.get('rep_name', 'Unknown Call')}**")
+            st.caption(f"Rep: {c.get('rep_name', '—')}")
+        with row[1]:
+            st.html(f'<span class="ct-badge {ct.lower()}">{ct}</span>')
+        with row[2]:
+            st.markdown(f"{dot} {status}")
+        with row[3]:
+            d = c.get("call_date") or c.get("created_at") or ""
+            st.caption(d[:10] if d else "—")
+        with row[4]:
+            if st.button("Open", key=f"o_{c['id']}", type="secondary"):
+                st.session_state["view_call_id"] = c["id"]
+                st.session_state["view"] = "call_review"
+                st.rerun()
         st.markdown("---")
 
-    if st.button("🔍 Analyze New Call", type="primary"):
-        st.session_state["view"] = "analyze"
+
+def page_submit():
+    st.markdown("### Analyze a Call")
+    tab_paste, tab_audio = st.tabs(["📋 Paste Transcript", "📁 Upload Audio"])
+
+    with tab_paste:
+        transcript_text = st.text_area(
+            "Paste your transcript",
+            height=260,
+            placeholder="[00:00] Alex (rep): Thanks for joining today!\n[00:15] Jordan (buyer): Happy to be here...",
+            key="transcript_input",
+            value=SAMPLE_TRANSCRIPT if st.session_state.get("_load_sample") else "",
+        )
+        if st.session_state.get("_load_sample"):
+            st.session_state.pop("_load_sample", None)
+
+        if transcript_text and len(transcript_text.strip()) > 10:
+            fmt = _detect_format(transcript_text)
+            seg_count = len([l for l in transcript_text.strip().split("\n") if l.strip()])
+            st.caption(f"Detected: **{fmt}** · {seg_count} lines · {transcript_text.count('?')} questions")
+
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            rep_name = st.text_input("Rep Name", placeholder="e.g. Alex")
+        with c2:
+            call_type = st.selectbox("Call Type", CALL_TYPES, index=0)
+            st.caption(CALL_TYPE_DESC.get(call_type, ""))
+        with c3:
+            deal_name = st.text_input("Deal Name (optional)", placeholder="e.g. Acme Corp Q2")
+
+        call_date = st.date_input("Call Date", value=date.today())
+
+        st.markdown("")
+        if st.button("🚀 Run Analysis", type="primary", use_container_width=True):
+            if transcript_text.strip():
+                _do_submit(transcript_text, rep_name or "Unknown", call_type, deal_name, str(call_date) if call_date else None)
+            else:
+                st.error("Please paste a transcript first.")
+
+    with tab_audio:
+        st.warning("Audio upload requires ASR (disabled in transcript-only mode). Use Paste Transcript instead.")
+
+
+def _do_submit(transcript_text, rep_name, call_type, deal_name, call_date=None):
+    if st.session_state.get("_submitting"):
+        return
+    st.session_state["_submitting"] = True
+    try:
+        with st.spinner("Submitting to analysis pipeline..."):
+            resp = api_post("/api/v1/calls/paste-transcript", json={
+                "rep_name": rep_name, "call_type": call_type,
+                "deal_name": deal_name or None, "transcript_text": transcript_text,
+                "call_date": call_date,
+            }, timeout=30)
+    finally:
+        st.session_state["_submitting"] = False
+
+    if resp.status_code not in (200, 201):
+        st.error(f"Backend error {resp.status_code}: {resp.text}")
+        return
+
+    call_id = resp.json().get("call_id")
+    if call_id:
+        st.session_state["view_call_id"] = call_id
+        st.session_state["view"] = "call_review"
+        st.session_state["_polling"] = True
         st.rerun()
 
 
-def page_call_review():
-    """Full Call Review simulation — Insights, Stats, Summary, Frameworks."""
-    analysis = st.session_state.get("current_analysis")
+# ── Call Review Page ──────────────────────────────────────────────────────────
 
-    if not analysis:
-        st.warning("No analysis found. Run an analysis first.")
-        if st.button("← Go to Analyze"):
-            st.session_state["view"] = "analyze"
+def page_call_review():
+    call_id = st.session_state.get("view_call_id")
+    if not call_id:
+        st.warning("No call selected.")
+        if st.button("← Back"):
+            st.session_state["view"] = "dashboard"
             st.rerun()
         return
 
-    call_type = analysis["call_type"]
-    rep_name = analysis["rep_name"]
-    deal_name = analysis["deal_name"]
-    segments = analysis["segments"]
-    signals = analysis["signals"]
-    routing_decisions = analysis["routing_decisions"]
-    active_frameworks = analysis["active_frameworks"]
-    active_groups = analysis["active_groups"]
-    results = analysis["results"]
-    metrics = analysis["metrics"]
+    r = api_get(f"/api/v1/calls/{call_id}", timeout=10)
+    if r.status_code != 200:
+        st.error(f"Could not load call: {r.text}")
+        return
+
+    call = r.json()
+    status = call.get("processing_status", "unknown")
 
     # Header
-    col_left, col_right = st.columns([3, 1])
-    with col_left:
-        deal_label = deal_name if deal_name != "Unknown Deal" else f"{rep_name} — {call_type.title()} Call"
-        st.subheader(f"🔊 {deal_label}")
-        st.caption(f"📋 {rep_name} · {call_type.title()} · {datetime.now().strftime('%b %d, %Y')} · {metrics.get('duration_minutes', 0):.0f}m")
-
-        # Pass1 gate signals
-        sig_chips = []
-        if signals.get("has_competitor_mention"):
-            sig_chips.append(":red[competitor]")
-        if signals.get("has_pricing_discussion"):
-            sig_chips.append(":orange[pricing]")
-        if signals.get("has_objection_markers"):
-            sig_chips.append(":red[objections]")
-        if signals.get("has_close_language"):
-            sig_chips.append(":green[close language]")
-        if sig_chips:
-            st.caption("Detected signals: " + " · ".join(sig_chips))
-
-    with col_right:
-        if st.button("↻ Re-analyze"):
-            st.session_state["view"] = "analyze"
+    h1, h2, h3 = st.columns([1, 5, 2])
+    with h1:
+        if st.button("← Back", type="secondary"):
+            st.session_state["view"] = "dashboard"
+            st.session_state["_polling"] = False
             st.rerun()
-
-    # Initialize active segment state for transcript highlighting
-    if "active_segment_ts" not in st.session_state:
-        st.session_state.active_segment_ts = None
-
-    def set_active_segment(timestamp_ms: int):
-        """Set the active transcript segment for highlighting."""
-        st.session_state.active_segment_ts = timestamp_ms
-
-    # Tab bar
-    tab_insights, tab_stats, tab_summary, tab_frameworks, tab_routing, tab_transcript = st.tabs([
-        "💡 Insights",
-        "📊 Call Stats",
-        "📝 Summary",
-        "🔬 Frameworks",
-        "🎛️ Routing Debug",
-        "📄 Transcript",
-    ])
-
-    # ── Insights Tab ──────────────────────────────────────────────────────────
-    with tab_insights:
-        from_backend = analysis.get("from_backend", False)
-        if not from_backend:
-            st.info("Running in demo mode — not connected to backend LLM pipeline.")
-        # Filter to top results
-        active_results = {k: v for k, v in results.items() if k in active_frameworks}
-        if not active_results:
-            if from_backend:
-                st.info("No insights returned from pipeline yet. Try again once processing completes.")
-            else:
-                st.info("No framework results yet.")
-        else:
-            # Sort by severity then confidence
-            sorted_results = sorted(
-                active_results.values(),
-                key=lambda r: (["red", "orange", "yellow", "green"].index(r.get("severity", "yellow")), -r.get("confidence", 0))
-            )
-
-            # Show top 3-5
-            top_n = min(5, len(sorted_results))
-            st.markdown(f"### Top Insights ({top_n})")
-
-            for i, result in enumerate(sorted_results[:top_n]):
-                render_insight_card(result)
-
-            # All results
-            if len(sorted_results) > top_n:
-                with st.expander(f"▼ All Framework Results ({len(sorted_results)} total)"):
-                    for result in sorted_results[top_n:]:
-                        fw_id = [k for k, v in results.items() if v == result]
-                        fw_label = f"FW-{fw_id[0]:02d}" if fw_id else ""
-                        st.markdown(f"**{fw_label} — {result.get('framework_name','')}** ({result.get('severity','').upper()})")
-                        st.caption(result.get("headline", ""))
-
-    # ── Call Stats Tab ───────────────────────────────────────────────────────
-    with tab_stats:
-        if not metrics:
-            st.info("No metrics available — transcript required.")
-        else:
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.markdown("#### Talk Ratio")
-                # Simple bar
-                rep_pct = metrics.get("rep_talk_pct", 50)
-                buyer_pct = metrics.get("buyer_talk_pct", 50)
-                st.markdown(f"**Rep:** {rep_pct}%")
-                st.progress(rep_pct / 100, text="Rep")
-                st.markdown(f"**Buyer:** {buyer_pct}%")
-                st.progress(buyer_pct / 100, text="Buyer")
-
-                st.markdown("#### Questions")
-                rep_q = sum(1 for s in segments if s["role"] == "rep" and "?" in s["text"])
-                buyer_q = sum(1 for s in segments if s["role"] == "buyer" and "?" in s["text"])
-                st.metric("Rep Questions", rep_q)
-                st.metric("Buyer Questions", buyer_q)
-
-            with col2:
-                st.markdown("#### Pace")
-                st.metric("Words/Minute", f"{metrics.get('words_per_minute', 0):.0f}")
-                st.metric("Total Segments", metrics.get("total_segments", 0))
-
-                st.markdown("#### Segments")
-                st.metric("Rep Segments", metrics.get("rep_segments", 0))
-                st.metric("Buyer Segments", metrics.get("buyer_segments", 0))
-
-    # ── Summary Tab ───────────────────────────────────────────────────────────
-    with tab_summary:
-        # Generate summary from results
-        top_result = None
-        for fw_id, r in results.items():
-            if fw_id in active_frameworks:
-                if top_result is None or ["red", "orange", "yellow", "green"].index(r.get("severity", "yellow")) < ["red", "orange", "yellow", "green"].index(top_result.get("severity", "yellow")):
-                    top_result = r
-
-        st.markdown("### AI Summary")
-
-        st.info(f"**RECAP:** {top_result.get('explanation', 'Analysis in progress...') if top_result else 'Analysis in progress...'}")
-
-        # Key decisions
-        money_fw = results.get(4)
-        if money_fw:
-            st.warning(f"💰 **Key Financial Signals:** {money_fw.get('headline', '')}")
-
-        # Coaching
-        coaching_items = []
-        for fw_id, r in results.items():
-            if fw_id in active_frameworks and r.get("coaching_recommendation"):
-                coaching_items.append(f"- **{r.get('framework_name','')}:** {r.get('coaching_recommendation','')}")
-
-        if coaching_items:
-            st.success("💡 **Coaching Recommendations:**\n\n" + "\n".join(coaching_items[:3]))
-
-    # ── Frameworks Tab ────────────────────────────────────────────────────────
-    with tab_frameworks:
-        # Group by group
-        group_ids = sorted(set(FRAMEWORK_REGISTRY.get(fw, {}).get("group", "?") for fw in active_frameworks))
-
-        for gid in group_ids:
-            if gid == "D":
-                continue
-            group_name = GROUP_NAMES.get(gid, f"Group {gid}")
-            fw_ids = sorted([fw for fw in active_frameworks if FRAMEWORK_REGISTRY.get(fw, {}).get("group") == gid])
-
-            st.markdown(f"#### Group {gid}: {group_name}")
-            for fw_id in fw_ids:
-                r = results.get(fw_id, {})
-                fw_info = FRAMEWORK_REGISTRY.get(fw_id, {})
-                sev = r.get("severity", "yellow")
-                sev_emoji = {"red": "🔴", "orange": "🟠", "yellow": "🟡", "green": "🟢"}.get(sev, "⚪")
-                score = r.get("score")
-                score_str = f"{score:.0f}/100" if score else "—"
-                badge = "🟢" if not fw_info.get("is_scaffolded") else "🟡"
-                aim_mark = " 🔮" if r.get('is_aim_null_finding') else ""
-
-                fw_col1, fw_col2 = st.columns([0.6, 0.4])
-                with fw_col1:
-                    st.markdown(f"{badge} **{fw_info.get('name', f'FW-{fw_id:02d}')}** {sev_emoji} {sev.upper()}{aim_mark}")
-                    st.caption(f"  {r.get('headline', 'No result')[:60]}")
-                with fw_col2:
-                    st.metric("Score", score_str)
-                st.divider()
-
-        # Show blocked/skipped frameworks
-        with st.expander("🔴 Skipped Frameworks"):
-            skipped = [d for d in routing_decisions if d["decision"] == "BLOCK"]
-            if skipped:
-                for d in skipped:
-                    st.markdown(f"- **{d['name']}** ({d['group']}): {d['reason']}")
-            else:
-                st.caption("No frameworks were blocked for this call type.")
-
-    # ── Routing Debug Tab ────────────────────────────────────────────────────
-    with tab_routing:
-        st.markdown("### 🎛️ Routing Debug")
-
-        col_sig, col_routing = st.columns(2)
-
-        with col_sig:
-            st.markdown("#### Pass1 Gate Signals")
-            sig_data = [(k.replace("has_", "").replace("_", " ").title(), "✅ True" if v else "❌ False") for k, v in signals.items()]
-            for label, val in sig_data:
-                emoji = "✅" if "True" in val else "❌"
-                st.markdown(f"- **{label}:** {emoji} {val.replace('True','').replace('False','')}")
-
-        with col_routing:
-            st.markdown("#### Active Groups")
-            for gid in ["A", "B", "C", "D", "E"]:
-                members = GROUP_MEMBERSHIP.get(gid, set())
-                active_in_group = active_frameworks & members
-                if gid == "D":
-                    st.markdown(f"- **Group {gid}** ({GROUP_NAMES.get(gid, '')}): ⏸️ Skipped (Phase 2)")
-                elif active_in_group:
-                    st.markdown(f"- **Group {gid}** ({GROUP_NAMES.get(gid, '')}): ✅ {len(active_in_group)} frameworks — {', '.join(f'FW-{fw:02d}' for fw in sorted(active_in_group))}")
-                else:
-                    st.markdown(f"- **Group {gid}** ({GROUP_NAMES.get(gid, '')}): ⏸️ Skipped (no active frameworks)")
-
-        st.divider()
-        st.markdown("#### All Routing Decisions")
-
-        # Build routing table
-        routing_df = pd.DataFrame(routing_decisions)
-        routing_df["fw_id"] = routing_df["fw_id"].apply(lambda x: f"FW-{x:02d}")
-
-        def chip_formatter(row):
-            if row["chip"] == "pinned":
-                return "🔵 Pinned"
-            elif row["chip"] == "aim":
-                return "🟣 AIM"
-            elif row["decision"] == "RUN":
-                return "🟢 Run"
-            else:
-                return "🔴 Block"
-
-        routing_df["Decision"] = routing_df.apply(chip_formatter, axis=1)
-        routing_df = routing_df[["fw_id", "name", "group", "Decision", "reason"]]
-        routing_df.columns = ["FW", "Framework", "Group", "Decision", "Reason"]
-
-        st.dataframe(routing_df, use_container_width=True, hide_index=True)
-
-        st.info(f"📊 **Summary:** {len(active_frameworks)}/17 frameworks active · {len(active_groups)} groups running · ~25-40% cost reduction vs running all 17")
-
-    # ── Transcript Tab ──────────────────────────────────────────────────────────
-    with tab_transcript:
-        if not segments:
-            st.info("No transcript segments available.")
-        else:
-            # Clear highlight button
-            if st.session_state.active_segment_ts is not None:
-                if st.button("Clear highlight"):
-                    st.session_state.active_segment_ts = None
-                    st.rerun()
-
-            st.markdown(f"**{len(segments)} segments** — click a timestamp to highlight")
-
-            # Display transcript segments
-            for seg in segments:
-                is_active = seg.get("start_ms") == st.session_state.active_segment_ts
-                role = seg.get("role", "unknown")
-                role_emoji = "🔵" if role == "rep" else "🟠"
-                ts_str = seg.get("start_str", "00:00")
-                ts_ms = seg.get("start_ms", 0)
-                speaker = seg.get("speaker", "Unknown")
-                text = seg.get("text", "")
-
-                if is_active:
-                    st.markdown(f"**[⏱️ {ts_str}]** {role_emoji} **{speaker}:** {text}")
-                else:
-                    col_ts, col_text = st.columns([0.12, 0.88])
-                    with col_ts:
-                        if st.button(f"⏱️", key=f"ts_{ts_ms}", help=f"Jump to {ts_str}"):
-                            set_active_segment(ts_ms)
-                    with col_text:
-                        st.markdown(f"{role_emoji} **{speaker}:** {text}")
-
-
-def page_routing_table():
-    """Full routing table explorer."""
-    st.header("🎛️ Routing Table Explorer")
-
-    st.markdown("""
-    This tool lets you explore how the routing engine decides which frameworks run for any combination of **call type** and **Pass1 gate signals**.
-    The routing is **pure Python** — zero LLM cost.
-    """)
-
-    col_ct, col_sig = st.columns(2)
-
-    with col_ct:
-        st.markdown("#### Call Type")
-        selected_call_type = st.selectbox("Select call type", CALL_TYPES, index=2)
-
-    with col_sig:
-        st.markdown("#### Pass1 Gate Signals")
-        sig_options = {
-            "has_competitor_mention": st.checkbox("Competitor Mentioned", value=False),
-            "has_pricing_discussion": st.checkbox("Pricing Discussion", value=True),
-            "has_numeric_anchor": st.checkbox("Numeric Anchor", value=True),
-            "has_objection_markers": st.checkbox("Objection Markers", value=False),
-            "has_rep_questions": st.checkbox("Rep asked 3+ questions", value=True),
-            "has_close_language": st.checkbox("Close Language", value=False),
-        }
-
-    signals = {k: bool(v) for k, v in sig_options.items()}
-    signals["call_duration_minutes"] = 35.0  # Assume normal call length
-
-    active, decisions = route_frameworks(selected_call_type, signals)
-    active_groups = get_active_groups(active)
-
-    st.markdown("---")
-    st.markdown(f"### Active: {len(active)} frameworks across groups {active_groups}")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.markdown("#### Running 🟢")
-        running = [d for d in decisions if d["decision"] == "RUN"]
-        for d in running:
-            aim_mark = " 🟣" if d["is_aim"] else ""
-            st.caption(f"FW-{d['fw_id']:02d} {d['name']}{aim_mark}")
-
-    with col2:
-        st.markdown("#### Blocked 🔴")
-        blocked = [d for d in decisions if d["decision"] == "BLOCK"]
-        for d in blocked:
-            st.caption(f"FW-{d['fw_id']:02d} {d['name']}: {d['reason']}")
-
-    st.markdown("---")
-    st.markdown("#### Full Decision Table")
-
-    routing_df = pd.DataFrame(decisions)
-    routing_df["fw_id"] = routing_df["fw_id"].apply(lambda x: f"FW-{x:02d}")
-
-    def chip_fmt(row):
-        if row["chip"] == "pinned":
-            return "🔵 Pinned"
-        elif row["chip"] == "aim":
-            return "🟣 AIM"
-        elif row["decision"] == "RUN":
-            return "🟢 Run"
-        return "🔴 Block"
-
-    routing_df["Decision"] = routing_df.apply(chip_fmt, axis=1)
-    routing_df = routing_df[["fw_id", "name", "group", "Decision", "reason"]]
-    routing_df.columns = ["FW", "Framework", "Grp", "Decision", "Why"]
-
-    st.dataframe(routing_df, use_container_width=True, hide_index=True)
-
-
-def page_dashboard():
-    """Home dashboard."""
-    st.header("📊 Signal Dashboard")
-
-    # Metric cards
-    m1, m2, m3, m4 = st.columns(4)
-    with m1:
-        st.metric("Total Calls", "127", delta="12 this week")
-    with m2:
-        st.metric("Avg Frameworks/Call", "9.3", delta="vs 11.2 target")
-    with m3:
-        st.metric("Insights Accepted", "68%", delta="+4% vs last month")
-    with m4:
-        st.metric("Processing Cost/Call", "$0.08", delta="-$0.02 vs target")
-
-    st.markdown("---")
-
-    # Recent activity
-    col_left, col_right = st.columns([2, 1])
-
-    with col_left:
-        st.markdown("#### Recent Calls")
-        recent = [
-            ("Acme Corp Q2", "Alex", "pricing", "ready", "2 concessions worth ~$21K"),
-            ("TechFlow Evaluation", "Maya", "discovery", "ready", "Strong discovery signals"),
-            ("Startup Growth Plan", "Jordan", "demo", "ready", "Budget questions evaded"),
-            ("Enterprise Deal", "Sam", "negotiation", "processing", "Analyzing..."),
-            ("Q1 Renewal", "Alex", "close", "ready", "Close attempt deferred"),
-        ]
-        for deal, rep, ctype, status, insight in recent:
-            ctype_cls = ctype
-            dot = {"ready": "●", "processing": "◌"}.get(status, "●")
-            st.markdown(f"{dot} **{deal}** · {rep} · {ctype} · {insight}")
-
-    with col_right:
-        st.markdown("#### Framework Usage")
-        fw_usage = [
-            ("Commitment Thermometer", 98),
-            ("Call Structure", 95),
-            ("Emotional Turning Points", 91),
-            ("Unanswered Questions", 87),
-            ("Money Left on Table", 64),
-        ]
-        for fw, pct in fw_usage:
-            st.markdown(f"{fw}: {pct}%")
-            st.progress(pct / 100)
-
-    st.markdown("---")
-
-    # Quick actions
-    col_a, col_b = st.columns(2)
-    with col_a:
-        if st.button("🔍 Analyze a Call", type="primary", use_container_width=True):
-            st.session_state["view"] = "analyze"
-            st.rerun()
-    with col_b:
-        if st.button("📞 View All Calls", use_container_width=True):
-            st.session_state["view"] = "calls"
-            st.rerun()
-
-
-# ─── Main Navigation ───────────────────────────────────────────────────────────
-
-def main():
-    # Sidebar navigation
-    with st.sidebar:
-        st.markdown("""
-        <div style="padding:8px 0 24px 0;text-align:center;">
-            <div style="font-size:28px;font-weight:800;color:white;letter-spacing:-0.5px;">Signal</div>
-            <div style="font-size:11px;color:rgba(255,255,255,0.7);letter-spacing:1px;">BEHAVIORAL INTELLIGENCE</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        pages = {
-            "📊 Dashboard": "dashboard",
-            "🔍 Analyze": "analyze",
-            "📞 All Calls": "calls",
-            "🎛️ Routing Table": "routing",
-        }
-
-        current = st.session_state.get("view", "dashboard")
-        for label, key in pages.items():
-            cls = "active" if current == key else ""
-            if st.button(f"{label}", key=key, use_container_width=True):
-                st.session_state["view"] = key
+    with h2:
+        deal = call.get("deal_name") or f"{call.get('rep_name', '')} — {call.get('call_type', '').title()}"
+        ct = call.get("call_type", "other")
+        d = (call.get("call_date") or call.get("created_at") or "")[:10]
+        st.markdown(f"### {deal}")
+        st.caption(f"**Rep:** {call.get('rep_name', '—')} · **Type:** `{ct}` · **Date:** {d}")
+    with h3:
+        dot = {"ready": "🟢", "processing": "🟡", "failed": "🔴"}.get(status, "⚪")
+        st.markdown(f"<div style='text-align:right'>{dot} <b>{status.upper()}</b></div>", unsafe_allow_html=True)
+        if status == "ready":
+            if st.button("🔄 Re-analyze", type="secondary"):
+                api_post(f"/api/v1/calls/{call_id}/reanalyze", json={})
+                st.session_state["_polling"] = True
                 st.rerun()
 
-        st.markdown("---")
+    # Processing state
+    if status == "processing":
+        _render_processing(call_id)
+        if st.session_state.get("_polling"):
+            cr = api_get(f"/api/v1/calls/{call_id}", timeout=10)
+            if cr.status_code == 200 and cr.json().get("processing_status") in ("ready", "failed"):
+                st.session_state["_polling"] = False
+                st.rerun()
+                return
+            time.sleep(5)
+            st.rerun()
+        return
 
-        # Backend connection status
-        if check_backend_connection():
-            st.success("Backend: Connected")
-        else:
-            st.warning("Backend: Not connected. Set SIGNAL_BACKEND_URL env var.")
+    if status == "failed":
+        st.error("Analysis failed. Check backend logs.")
+        if st.button("🔄 Retry"):
+            api_post(f"/api/v1/calls/{call_id}/reanalyze", json={})
+            st.session_state["_polling"] = True
+            st.rerun()
+        return
 
-        st.markdown("""
-        <div style="font-size:11px;color:rgba(255,255,255,0.6);line-height:1.6;">
-        <strong>Signal v0.1.0 — Testing Harness</strong><br>
-        Backend: signalapp/ · Pipeline: LangGraph<br>
-        Routing: pure Python ($0.00)<br>
-        <br>
-        Production frontend: Next.js (per PRD)
+    # Fetch data
+    insights_data = fetch_insights(call_id) or {}
+    insights = insights_data.get("insights") or []
+    summary = insights_data.get("summary") or {}
+    metrics = fetch_metrics(call_id)
+    segments = fetch_transcript(call_id)
+
+    # One-line summary
+    headline = summary.get("headline") if summary else None
+    if headline:
+        st.markdown(f"**{headline}**")
+
+    # 60/40 split
+    col_left, col_right = st.columns([3, 2])
+
+    with col_left:
+        _render_transcript(segments, call_id)
+
+    with col_right:
+        t_ins, t_stats, t_sum, t_fw = st.tabs(["💡 Insights", "📊 Call Stats", "📝 Summary", "🔬 Frameworks"])
+        with t_ins:
+            _render_insights(insights)
+        with t_stats:
+            _render_stats(metrics, summary)
+        with t_sum:
+            _render_summary(summary, insights)
+        with t_fw:
+            _render_frameworks(insights)
+
+
+def _render_processing(call_id):
+    st.html(f"""
+    <div style="text-align:center;padding:30px 20px">
+        <div style="font-size:40px;margin-bottom:8px">🔊</div>
+        <div style="font-size:18px;font-weight:700;color:{TEXT_PRIMARY};margin-bottom:4px">Analyzing your call</div>
+        <div style="font-size:13px;color:{TEXT_SECONDARY};margin-bottom:20px">Running behavioral intelligence pipeline</div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:6px">
+            <div style="width:8px;height:8px;border-radius:50%;background:{ACCENT};animation:pulse-dot 1.2s ease-in-out infinite"></div>
+            <div style="width:8px;height:8px;border-radius:50%;background:{ACCENT};animation:pulse-dot 1.2s ease-in-out infinite;animation-delay:.2s"></div>
+            <div style="width:8px;height:8px;border-radius:50%;background:{ACCENT};animation:pulse-dot 1.2s ease-in-out infinite;animation-delay:.4s"></div>
         </div>
-        """, unsafe_allow_html=True)
-
-    # Route to page
-    view = st.session_state.get("view", "dashboard")
-
-    if view == "dashboard":
-        page_dashboard()
-    elif view == "analyze":
-        page_analyze()
-    elif view == "calls":
-        page_calls_list()
-    elif view == "call_review":
-        page_call_review()
-    elif view == "routing":
-        page_routing_table()
+    </div>
+    """)
+    steps = ["Parsing transcript", "Pass 1 extraction", "Framework routing",
+             "Running 17 frameworks", "Verifying results", "Generating summary"]
+    for i, step in enumerate(steps):
+        icon = "✅" if i < 1 else "⏳" if i == 1 else "⬜"
+        st.markdown(f"{icon} {step}")
+    st.caption(f"Call ID: `{call_id}` · Typically 1-3 minutes")
 
 
-if __name__ == "__main__":
-    main()
+def _render_transcript(segments, call_id):
+    st.markdown("#### Transcript")
+
+    # Legend
+    st.html(f"""
+    <div style="display:flex;gap:16px;margin-bottom:8px;font-size:12px;color:{TEXT_SECONDARY}">
+        <span><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:rgba(59,130,246,0.25);border-left:3px solid #3B82F6;margin-right:4px"></span> Rep (Sales)</span>
+        <span><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:rgba(245,158,11,0.25);border-left:3px solid #F59E0B;margin-right:4px"></span> Buyer (Customer)</span>
+    </div>
+    """)
+
+    search = st.text_input("🔍 Search", "", key="tsearch", placeholder="Search transcript...")
+
+    if not segments:
+        st.info("Transcript segments not available.")
+        return
+
+    filtered = segments
+    if search:
+        filtered = [s for s in segments if search.lower() in s.get("text", "").lower()]
+        st.caption(f"{len(filtered)} matches")
+    else:
+        st.caption(f"{len(segments)} segments")
+
+    for seg in filtered:
+        role = seg.get("role", "unknown")
+        start_ms = seg.get("start_ms", 0)
+        m, s = divmod(start_ms // 1000, 60)
+        spk = seg.get("speaker", "?")
+        text = seg.get("text", "")
+
+        if search and search.lower() in text.lower():
+            import re
+            text = re.sub(f"({re.escape(search)})", r'<mark style="background:#5C4E1E;color:#FDE047;padding:1px 2px;border-radius:2px">\1</mark>', text, flags=re.IGNORECASE)
+
+        role_class = "rep" if role == "rep" else "buyer" if role == "buyer" else "unknown"
+        st.html(f'<div class="transcript-seg {role_class}"><span class="ts">[{m:02d}:{s:02d}]</span><span class="speaker">{spk}:</span> {text}</div>')
+
+
+def _render_insights(insights):
+    st.markdown("### Top Insights")
+    if not insights:
+        st.info("No insights generated.")
+        return
+
+    top = [i for i in insights if i.get("is_top_insight")]
+    if not top:
+        top = insights[:5]
+
+    st.caption(f"Showing {len(top)} top · {len(insights)} total")
+
+    for idx, ins in enumerate(top, 1):
+        sev = ins.get("severity", "yellow").lower()
+        color, _ = sev_color(sev)
+        score = int(ins.get("confidence", 0.5) * 100)
+        headline = ins.get("headline", "No headline")
+        explanation = ins.get("explanation", "")
+        coaching = ins.get("coaching_recommendation", "")
+        fw_name = ins.get("framework_name", "Framework")
+        evidence = ins.get("evidence") or []
+        iid = ins.get("id", "")
+
+        with st.container():
+            hl, hr = st.columns([5, 1])
+            with hl:
+                st.html(f'{sev_dot(sev)} <span style="font-size:11px;color:{TEXT_MUTED};font-weight:600">{fw_name[:40]}</span> <span class="sev-badge {sev}">{sev.upper()}</span>')
+                st.markdown(f"**{idx}. {headline}**")
+            with hr:
+                st.html(f'<div style="text-align:right;font-size:22px;font-weight:800;color:{color}">{score}<span style="font-size:11px;color:{TEXT_MUTED}">%</span></div>')
+
+            st.markdown(f"<div style='font-size:13px;color:{TEXT_SECONDARY};line-height:1.5'>{explanation}</div>", unsafe_allow_html=True)
+
+            for ev in evidence[:3]:
+                q = ev.get("quote", "")
+                ts = ev.get("timestamp", 0)
+                verified = " ✓" if ev.get("quote_verified") else ""
+                if q:
+                    st.html(f'<div class="evidence-quote">[{ts//60000:02d}:{(ts%60000)//1000:02d}] "{q[:120]}"{verified}</div>')
+
+            if coaching and "Unable to generate" not in coaching:
+                st.html(f'<div class="coaching-box" style="margin-top:8px"><strong style="color:{ACCENT}">Coaching:</strong> {coaching[:350]}</div>')
+
+            fb1, fb2, _ = st.columns([1, 1, 6])
+            with fb1:
+                st.button("👍", key=f"u_{iid}_{idx}", help="Helpful",
+                          on_click=lambda iid=iid: api_post(f"/api/v1/insights/{iid}/feedback", json={"feedback": "positive"}))
+            with fb2:
+                st.button("👎", key=f"d_{iid}_{idx}", help="Needs work",
+                          on_click=lambda iid=iid: api_post(f"/api/v1/insights/{iid}/feedback", json={"feedback": "negative"}))
+            st.markdown("---")
+
+    remaining = [i for i in insights if not i.get("is_top_insight")]
+    if remaining:
+        with st.expander(f"All Framework Results ({len(remaining)} more)"):
+            for ins in remaining:
+                sev = ins.get("severity", "yellow").lower()
+                color, _ = sev_color(sev)
+                score = int(ins.get("confidence", 0) * 100)
+                st.html(f'{sev_dot(sev)} <b>{ins.get("framework_name","")[:40]}</b> — {score}%: {ins.get("headline","")[:80]}')
+
+
+def _render_stats(metrics, summary):
+    st.markdown("### Call Stats")
+    if not metrics:
+        st.info("Base metrics not yet available. They are computed during analysis.")
+        # Still show severity if summary exists
+        if summary and summary.get("severity_breakdown"):
+            _render_severity_bars(summary)
+        return
+
+    # Talk ratio donut
+    rep_r = metrics.get("rep_talk_ratio", 0)
+    buyer_r = metrics.get("buyer_talk_ratio", 0)
+    rep_deg = int(rep_r * 360)
+    st.markdown("**Talk Ratio**")
+    st.html(f"""
+    <div style="display:flex;align-items:center;gap:20px;margin:8px 0 16px">
+        <div style="width:72px;height:72px;border-radius:50%;
+            background:conic-gradient(#3B82F6 0deg {rep_deg}deg, #F59E0B {rep_deg}deg 360deg);
+            display:flex;align-items:center;justify-content:center">
+            <div style="width:44px;height:44px;border-radius:50%;background:{BG_CARD};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:{TEXT_PRIMARY}">
+                {rep_r:.0%}
+            </div>
+        </div>
+        <div style="font-size:13px">
+            <div><span style="color:#60A5FA;font-weight:700">■</span> Rep: {rep_r:.0%}</div>
+            <div><span style="color:#FBBF24;font-weight:700">■</span> Buyer: {buyer_r:.0%}</div>
+        </div>
+    </div>
+    """)
+
+    # 2-column grid
+    c1, c2 = st.columns(2)
+    metric_pairs = [
+        (c1, f"{metrics.get('rep_questions',0)} / {metrics.get('buyer_questions',0)}", "Questions (Rep / Buyer)"),
+        (c2, f"{metrics.get('rep_filler_rate_per_min',0)} / {metrics.get('buyer_filler_rate_per_min',0)}", "Filler Words/Min"),
+        (c1, f"{metrics.get('rep_wpm',0)} / {metrics.get('buyer_wpm',0)}", "Words/Min (Rep / Buyer)"),
+        (c2, str(metrics.get('interruption_count', 0)), "Interruptions"),
+        (c1, f"{metrics.get('rep_longest_monologue_seconds',0)}s", "Longest Rep Monologue"),
+        (c2, f"{metrics.get('rep_avg_response_latency_seconds',0)}s / {metrics.get('buyer_avg_response_latency_seconds',0)}s", "Response Latency"),
+        (c1, f"{metrics.get('silence_percentage',0)}%", "Silence"),
+        (c2, f"{metrics.get('longest_silence_seconds',0)}s", "Longest Silence"),
+    ]
+    for col, val, label in metric_pairs:
+        with col:
+            st.html(f'<div class="stat-card" style="margin-bottom:8px"><div style="font-size:18px;font-weight:700;color:{TEXT_PRIMARY}">{val}</div><div class="stat-label">{label}</div></div>')
+
+    st.markdown("---")
+    if summary:
+        _render_severity_bars(summary)
+
+
+def _render_severity_bars(summary):
+    st.markdown("**Severity Breakdown**")
+    sev_counts = summary.get("severity_breakdown") or {}
+    total = sum(sev_counts.values()) or 1
+    for sev_key, label in [("red", "Critical"), ("orange", "Warning"), ("yellow", "Note"), ("green", "Positive")]:
+        count = sev_counts.get(sev_key, 0)
+        color, _ = sev_color(sev_key)
+        st.html(f'{sev_dot(sev_key)} <b style="color:{color}">{label}</b>: {count}')
+        st.progress(count / total)
+
+
+def _render_summary(summary, insights):
+    st.markdown("### Call Summary")
+    if not summary:
+        st.info("Summary not available yet.")
+        return
+
+    # Recap
+    recap = summary.get("recap") or summary.get("ai_summary_text") or ""
+    if recap:
+        st.markdown("**RECAP**")
+        st.info(recap)
+
+    # Key decisions
+    decisions = summary.get("key_decisions") or []
+    if decisions:
+        st.markdown("**KEY DECISIONS**")
+        for d in decisions:
+            st.markdown(f"- {d}")
+
+    # Action items
+    rep_actions = summary.get("action_items_rep") or []
+    buyer_actions = summary.get("action_items_buyer") or []
+    if rep_actions or buyer_actions:
+        st.markdown("**ACTION ITEMS**")
+        for a in rep_actions:
+            st.markdown(f"- Rep: {a}")
+        for a in buyer_actions:
+            st.markdown(f"- Buyer: {a}")
+
+    # Open questions
+    open_q = summary.get("open_questions") or []
+    if open_q:
+        st.markdown("**OPEN QUESTIONS**")
+        for q in open_q:
+            st.markdown(f"- {q}")
+
+    # Deal assessment
+    assessment = summary.get("deal_assessment") or ""
+    if assessment:
+        st.markdown("**DEAL ASSESSMENT**")
+        sev = summary.get("severity_breakdown") or {}
+        if sev.get("red", 0) >= 2:
+            st.error(assessment)
+        elif sev.get("red", 0) >= 1 or sev.get("orange", 0) >= 2:
+            st.warning(assessment)
+        else:
+            st.success(assessment)
+
+    # Coaching focus
+    focus = summary.get("coaching_focus") or ""
+    if focus:
+        st.markdown("**COACHING FOCUS**")
+        st.html(f'<div class="coaching-box">{focus}</div>')
+
+    # Key themes
+    themes = summary.get("key_themes") or []
+    if themes:
+        st.markdown("---")
+        st.markdown("**Key Themes**")
+        for t in themes:
+            st.markdown(f"- {t}")
+
+    # Key concerns from insights
+    red_orange = [i for i in insights if i.get("severity", "").lower() in ("red", "orange")]
+    if red_orange:
+        st.markdown("---")
+        st.markdown("**Key Concerns**")
+        for ins in red_orange[:3]:
+            sev = ins.get("severity", "yellow").lower()
+            st.html(f'{sev_dot(sev)} <b>{ins.get("framework_name","")}</b>: {ins.get("headline","")[:80]}')
+
+
+def _render_frameworks(insights):
+    st.markdown("### Framework Results")
+    if not insights:
+        st.info("No framework results available.")
+        return
+
+    # Group using fuzzy matching
+    grouped = {"A": [], "B": [], "C": [], "E": [], "Other": []}
+    for ins in insights:
+        fw_name = ins.get("framework_name", "")
+        # Use prompt_group from API if available, else fuzzy match
+        group = ins.get("prompt_group") or _fw_group_for(fw_name)
+        grouped.setdefault(group, []).append(ins)
+
+    for gid in ["A", "B", "C", "E"]:
+        items = grouped.get(gid, [])
+        group_label = FW_GROUPS.get(gid, (f"Group {gid}", []))[0]
+
+        with st.expander(f"Group {gid}: {group_label} — {len(items)} result{'s' if len(items) != 1 else ''}", expanded=bool(items)):
+            if not items:
+                st.caption("No active frameworks in this group for this call type.")
+            for ins in items:
+                sev = ins.get("severity", "yellow").lower()
+                color, _ = sev_color(sev)
+                score = int(ins.get("confidence", 0) * 100)
+                st.html(f"""
+                <div style="padding:8px 12px;border-left:3px solid {color};margin-bottom:8px;border-radius:0 6px 6px 0;background:{BG_ELEVATED}">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+                        {sev_dot(sev)}
+                        <span style="font-weight:700;font-size:13px;color:{TEXT_PRIMARY}">{ins.get('framework_name','')}</span>
+                        <span style="font-size:11px;color:{TEXT_MUTED}">{score}%</span>
+                    </div>
+                    <div style="font-size:13px;font-weight:600;color:{TEXT_PRIMARY}">{ins.get('headline','')[:80]}</div>
+                    <div style="font-size:12px;color:{TEXT_SECONDARY};margin-top:2px">{ins.get('explanation','')[:200]}{"..." if len(ins.get('explanation',''))>200 else ""}</div>
+                </div>
+                """)
+
+    # Other/ungrouped
+    other = grouped.get("Other", [])
+    if other:
+        with st.expander(f"Other — {len(other)} results"):
+            for ins in other:
+                st.markdown(f"- **{ins.get('framework_name','')}**: {ins.get('headline','')[:80]}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# NAVIGATION
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Top bar
+st.html(f"""
+<div style="display:flex;align-items:center;padding:12px 24px;background:{BG_CARD};border-bottom:1px solid {BORDER}">
+    <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:22px">🔊</span>
+        <span style="font-size:17px;font-weight:800;color:{ACCENT};letter-spacing:-0.5px">Signal</span>
+        <span style="font-size:10px;background:{ACCENT};color:white;padding:2px 6px;border-radius:8px;font-weight:700">BETA</span>
+    </div>
+</div>
+""")
+
+# Sidebar
+with st.sidebar:
+    st.html(f"""
+    <div style="padding:20px 16px 10px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:24px">
+            <span style="font-size:24px">🔊</span>
+            <div>
+                <div style="font-size:16px;font-weight:800;color:{TEXT_PRIMARY};line-height:1">Signal</div>
+                <div style="font-size:10px;color:{TEXT_MUTED};letter-spacing:0.5px">BEHAVIORAL INTELLIGENCE</div>
+            </div>
+        </div>
+    </div>
+    """)
+
+    for label, key in [("📊 Dashboard", "dashboard"), ("📞 All Calls", "calls"), ("🚀 Analyze", "submit")]:
+        if st.button(label, key=f"nav_{key}", use_container_width=True):
+            st.session_state["view"] = key
+            if key in ("dashboard", "calls"):
+                st.session_state.pop("view_call_id", None)
+            st.rerun()
+
+    st.markdown("---")
+    if backend_online():
+        st.success("Backend online")
+    else:
+        st.error("Backend offline")
+
+    st.html(f"""
+    <div style="margin-top:16px;padding:12px;background:{BG_ELEVATED};border-radius:8px;border:1px solid {BORDER}">
+        <div style="font-size:11px;color:{TEXT_MUTED};line-height:1.7">
+            <strong style="color:{TEXT_PRIMARY}">Signal v0.2.0</strong><br>
+            Backend: FastAPI · Pipeline: LangGraph<br>
+            Intelligence: 17 frameworks · 7-gate verify<br>
+            LLM: Vertex AI / Gemini 2.5 Flash
+        </div>
+    </div>
+    """)
+
+# Route
+view = st.session_state.get("view", "dashboard")
+{"dashboard": page_dashboard, "calls": page_calls_list, "submit": page_submit, "call_review": page_call_review}.get(view, page_dashboard)()

@@ -4,7 +4,30 @@
       "mcp__plugin_context7_context7__resolve-library-id",
       "mcp__plugin_context7_context7__query-docs",
       "Bash(python:*)",
-      "Bash(find signalapp:*)"
+      "Bash(find signalapp:*)",
+      "Bash(taskkill //F //PID 37260)",
+      "Bash(uvicorn signalapp.app.main:app --port 8000 --host 127.0.0.1)",
+      "Bash(curl -s http://127.0.0.1:8000/health)",
+      "Bash(taskkill //F //PID 30044)",
+      "mcp__playwright__browser_navigate",
+      "Bash(netstat -ano)",
+      "Bash(streamlit run:*)",
+      "Bash(curl -s -m 5 http://127.0.0.1:8502)",
+      "Bash(curl -s http://127.0.0.1:8000/api/v1/calls/f2907a9e-0971-45eb-be32-7f0a3a681c9c)",
+      "Bash(curl:*)",
+      "Bash(taskkill //F //PID 24852)",
+      "Bash(xargs wc:*)",
+      "Bash(find:*)",
+      "mcp__playwright__browser_close",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_press_key",
+      "mcp__playwright__browser_evaluate",
+      "Bash(python3:*)",
+      "Bash(xargs grep:*)",
+      "Bash(taskkill //F //IM python.exe)"
     ]
   }
 }

@@ -32,6 +32,7 @@ def create_pipeline_workflow():
         generate_insights → generate_summary
         generate_summary → store_results → END
     """
+    from signalapp.pipeline.nodes.base_metrics import base_metrics_node
     from signalapp.pipeline.nodes.pass1_extract import pass1_extract_node
     from signalapp.pipeline.nodes.route import route_node
     from signalapp.pipeline.nodes.execute_groups import execute_groups_node
@@ -44,6 +45,7 @@ def create_pipeline_workflow():
     builder = StateGraph(PipelineState)
 
     # Add nodes
+    builder.add_node("base_metrics", base_metrics_node)
     builder.add_node("pass1_extract", pass1_extract_node)
     builder.add_node("route_frameworks", route_node)
     builder.add_node("execute_groups", execute_groups_node)
@@ -53,7 +55,8 @@ def create_pipeline_workflow():
     builder.add_node("store_results", store_results_node)
 
     # Edges
-    builder.add_edge(START, "pass1_extract")
+    builder.add_edge(START, "base_metrics")
+    builder.add_edge("base_metrics", "pass1_extract")
     builder.add_edge("pass1_extract", "route_frameworks")
     builder.add_edge("route_frameworks", "execute_groups")
     builder.add_edge("execute_groups", "verify_results")

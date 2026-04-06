@@ -3,6 +3,7 @@ Calls API router — /api/v1/calls
 """
 from __future__ import annotations
 
+import asyncio
 import re
 import uuid
 from datetime import datetime
@@ -35,6 +36,16 @@ class CallResponse(BaseModel):
 class CallListResponse(BaseModel):
     calls: list[CallResponse]
     total: int
+
+
+class TranscriptSegmentResponse(BaseModel):
+    segment_id: str
+    index: int
+    speaker: str
+    role: str
+    start_ms: int
+    end_ms: int
+    text: str
 
 
 class UploadResponse(BaseModel):
@@ -130,6 +141,39 @@ async def get_call(
     )
 
 
+@router.get("/{call_id}/transcript", response_model=list[TranscriptSegmentResponse])
+async def get_call_transcript(
+    call_id: str,
+    user_id: CurrentUserID,
+    call_repo: CallRepo,
+) -> list[dict]:
+    """Return all transcript segments for a call, ordered by start time."""
+    try:
+        call_uuid = uuid.UUID(call_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid call_id format")
+
+    call = await call_repo.get_by_id(call_uuid)
+    if call is None:
+        raise HTTPException(status_code=404, detail="Call not found")
+
+    if not call.transcript or not call.transcript.segments:
+        return []
+
+    return sorted([
+        {
+            "segment_id": str(seg.id),
+            "index": seg.segment_index,
+            "speaker": seg.speaker_name,
+            "role": seg.speaker_role,
+            "start_ms": seg.start_time_ms,
+            "end_ms": seg.end_time_ms,
+            "text": seg.text_content,
+        }
+        for seg in call.transcript.segments
+    ], key=lambda s: s["start_ms"])
+
+
 @router.post("/upload", response_model=UploadResponse)
 async def upload_call(
     user_id: CurrentUserID,
@@ -155,19 +199,16 @@ async def upload_call(
 async def paste_transcript(
     request: PasteTranscriptRequest,
     user_id: CurrentUserID,
-    call_repo: CallRepo,
-    transcript_repo: TranscriptRepo,
 ) -> PasteTranscriptResponse:
     """
     Primary Phase 1 input method: paste transcript directly.
     Stores transcript text in Postgres, skips ASR entirely.
     """
+    from signalapp.db.repository import get_session
+    from signalapp.db.models import Call as CallModel, Transcript as TranscriptModel, TranscriptSegment as SegmentModel
     from signalapp.jobs.pipeline import run_pipeline_job
 
-    # TODO: Get org_id from user context
     org_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
-
-    # Parse call date
     parsed_date = None
     if request.call_date:
         try:
@@ -175,48 +216,55 @@ async def paste_transcript(
         except ValueError:
             pass
 
-    # Create call record
-    call = await call_repo.create(
-        org_id=org_id,
-        uploaded_by=user_id,
-        rep_name=request.rep_name,
-        call_type=request.call_type,
-        deal_name=request.deal_name,
-        call_date=parsed_date,
-        input_type="paste",
-    )
-
-    # Parse and segment the transcript
     segments = _parse_transcript(request.transcript_text)
+    call_id: uuid.UUID
+    transcript_id: uuid.UUID
 
-    # Create transcript record
-    transcript = await transcript_repo.create(
-        call_id=call.id,
-        full_text=request.transcript_text,
-        asr_provider="paste",
-        asr_model=None,
-        asr_confidence=1.0,
-        language="en",
-    )
+    # Single session — all DB ops in one transaction, committed on exit
+    async for session in get_session():
+        call = CallModel(
+            org_id=org_id, uploaded_by=user_id, rep_name=request.rep_name,
+            call_type=request.call_type, deal_name=request.deal_name,
+            call_date=parsed_date, input_type="paste",
+        )
+        session.add(call)
+        await session.flush()
+        call_id = call.id
 
-    # Store segments
-    await transcript_repo.add_segments(
-        transcript_id=transcript.id,
-        segments=segments,
-    )
+        transcript = TranscriptModel(
+            call_id=call_id, full_text=request.transcript_text,
+            asr_provider="paste", asr_model=None, asr_confidence=1.0, language="en",
+        )
+        session.add(transcript)
+        await session.flush()
+        transcript_id = transcript.id
 
-    # Enqueue pipeline job (runs in-process for memory mode)
-    pipeline_error = None
-    try:
-        await run_pipeline_job({}, str(call.id))
-    except Exception as e:
-        pipeline_error = str(e)
-        import logging
-        logging.getLogger(__name__).exception(f"Pipeline job failed for call {call.id}: {e}")
+        seg_models = [
+            SegmentModel(
+                transcript_id=transcript_id, segment_index=s["segment_index"],
+                speaker_name=s["speaker_name"], speaker_role=s.get("speaker_role", "unknown"),
+                start_time_ms=s["start_time_ms"], end_time_ms=s["end_time_ms"],
+                text_content=s["text"],
+                word_count=s.get("word_count", len(s.get("text", "").split())),
+            )
+            for s in segments
+        ]
+        session.add_all(seg_models)
+        await session.flush()
+        # get_session commits on exit
+
+    # Fire pipeline in background via memory queue thread pool.
+    # Runs in ThreadPoolExecutor so blocking LLM I/O never blocks FastAPI's async loop.
+    import logging
+    logger = logging.getLogger(__name__)
+    from signalapp.jobs.memory import get_memory_queue
+    queue = get_memory_queue()
+    job_id = await queue.enqueue_job("run_pipeline_job", call_id=str(call_id))
+    logger.info(f"Enqueued pipeline job {job_id} for call {call_id}")
 
     return PasteTranscriptResponse(
-        call_id=str(call.id),
-        status="failed" if pipeline_error else "processing",
+        call_id=str(call_id),
+        status="processing",
         segments_count=len(segments),
     )
 
@@ -231,24 +279,43 @@ def _parse_transcript(text: str) -> list[dict]:
     - `Speaker (role): text` (no timestamp)
     - `Speaker: text` (no timestamp, role inferred)
 
-    Returns list of segment dicts with:
-    - segment_index: int
-    - speaker_name: str
-    - speaker_role: str ("rep" | "buyer" | "unknown")
-    - start_time_ms: int
-    - end_time_ms: int (estimated as start + 30 seconds)
-    - text: str
+    Handles:
+    - Multiple [MM:SS] entries on a single line (pre-splits)
+    - Continuation lines without timestamps (joins to previous speaker)
     """
-    segments = []
-    lines = text.strip().split("\n")
-
-    for idx, line in enumerate(lines):
+    # Step 1: Join continuation lines to their parent speaker line.
+    # A "continuation" is any line that doesn't start with [MM:SS] or Speaker:
+    raw_lines = text.strip().split("\n")
+    joined_lines = []
+    for line in raw_lines:
         line = line.strip()
         if not line:
             continue
+        # Is this a new speaker turn? Check for [MM:SS] or "Name:" pattern
+        is_new_turn = bool(
+            re.match(r'\[\d{1,3}:\s*\d{2}\]', line)
+            or re.match(r'[A-Za-z][\w\s]{0,30}\s*(?:\([^)]+\))?\s*:', line)
+        )
+        if is_new_turn or not joined_lines:
+            joined_lines.append(line)
+        else:
+            # Continuation of previous speaker — append
+            joined_lines[-1] += " " + line
 
+    # Step 2: Pre-split lines that contain multiple [MM:SS] entries
+    expanded_lines = []
+    for line in joined_lines:
+        parts = re.split(r'(?=\[\d{1,3}:\s*\d{2}\])', line)
+        for part in parts:
+            part = part.strip()
+            if part:
+                expanded_lines.append(part)
+
+    # Step 3: Parse each line into a segment
+    segments = []
+    for idx, line in enumerate(expanded_lines):
         # Try timestamped format: [MM:SS] Speaker (role): text
-        ts_match = re.match(r"\[(\d+):(\d+)\]\s*(.+?)\s*(?:\(([^)]+)\))?\s*:\s*(.*)", line)
+        ts_match = re.match(r"\[(\d+):\s*(\d+)\]\s*(.+?)\s*(?:\(([^)]+)\))?\s*:\s*(.*)", line)
         if ts_match:
             mins, secs, speaker, role, text_content = ts_match.groups()
             start_ms = int(mins) * 60 * 1000 + int(secs) * 1000
@@ -258,28 +325,116 @@ def _parse_transcript(text: str) -> list[dict]:
             simple_match = re.match(r"(.+?)\s*:\s*(.*)", line)
             if simple_match:
                 speaker, text_content = simple_match.groups()
-                start_ms = idx * 30000  # Estimate 30s per line
+                start_ms = idx * 30000
                 role = _infer_role(speaker)
             else:
-                # Plain text — treat as unknown speaker
+                # Plain text — append to previous segment if possible
+                if segments:
+                    segments[-1]["text"] += " " + line
+                    segments[-1]["word_count"] = len(segments[-1]["text"].split())
+                    continue
                 speaker = "Unknown"
                 text_content = line
                 start_ms = idx * 30000
                 role = "unknown"
 
-        # Estimate end time as start + 30 seconds
-        end_ms = start_ms + 30000
+        text_content = text_content.strip()
+        word_count = len(text_content.split())
 
         segments.append({
             "segment_index": idx,
             "speaker_name": speaker.strip(),
             "speaker_role": role,
             "start_time_ms": start_ms,
-            "end_time_ms": end_ms,
-            "text": text_content.strip(),
+            "end_time_ms": start_ms + 30000,
+            "text": text_content,
+            "word_count": word_count,
         })
 
+    # Step 4: Fix segment indices and end times
+    for i, seg in enumerate(segments):
+        seg["segment_index"] = i
+    for i in range(len(segments) - 1):
+        segments[i]["end_time_ms"] = segments[i + 1]["start_time_ms"]
+
     return segments
+
+
+@router.get("/{call_id}/metrics")
+async def get_call_metrics(
+    call_id: str,
+    user_id: CurrentUserID,
+    call_repo: CallRepo,
+) -> dict:
+    """Return base metrics for a call (talk ratio, WPM, questions, etc.)."""
+    try:
+        call_uuid = uuid.UUID(call_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid call_id format")
+
+    call = await call_repo.get_by_id(call_uuid)
+    if call is None:
+        raise HTTPException(status_code=404, detail="Call not found")
+
+    # Get latest analysis run's summary which contains base_metrics
+    from signalapp.db.repository import AnalysisRunRepository
+    run_repo = AnalysisRunRepository()
+    latest_run = await run_repo.get_latest_for_call(call_uuid)
+
+    if latest_run and latest_run.settings_snapshot:
+        metrics = latest_run.settings_snapshot.get("base_metrics", {})
+    else:
+        metrics = {}
+
+    # If no stored metrics, compute from segments
+    if not metrics and call.transcript and call.transcript.segments:
+        from signalapp.pipeline.nodes.base_metrics import base_metrics_node
+        segments = [
+            {
+                "segment_id": str(s.id),
+                "speaker_name": s.speaker_name,
+                "speaker_role": s.speaker_role,
+                "start_time_ms": s.start_time_ms,
+                "end_time_ms": s.end_time_ms,
+                "text": s.text_content,
+                "word_count": s.word_count,
+            }
+            for s in call.transcript.segments
+        ]
+        result = await base_metrics_node({"transcript_segments": segments})
+        metrics = result.get("base_metrics", {})
+
+    return {"call_id": call_id, "metrics": metrics}
+
+
+@router.post("/{call_id}/reanalyze")
+async def reanalyze_call(
+    call_id: str,
+    user_id: CurrentUserID,
+    call_repo: CallRepo,
+) -> dict:
+    """Re-run the analysis pipeline for an existing call."""
+    try:
+        call_uuid = uuid.UUID(call_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid call_id format")
+
+    call = await call_repo.get_by_id(call_uuid)
+    if call is None:
+        raise HTTPException(status_code=404, detail="Call not found")
+
+    # Update call status to processing
+    await call_repo.update_status(call_uuid, "processing")
+
+    # Enqueue pipeline job
+    from signalapp.jobs.memory import get_memory_queue
+    queue = get_memory_queue()
+    job_id = await queue.enqueue_job("run_pipeline_job", call_id=str(call_uuid))
+
+    import logging
+    logging.getLogger(__name__).info(f"Re-analysis enqueued: job {job_id} for call {call_uuid}")
+
+    return {"call_id": call_id, "status": "processing", "message": "Re-analysis started"}
 
 
 def _normalize_role(role: str | None) -> str:

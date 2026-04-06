@@ -22,6 +22,9 @@ class PipelineState(TypedDict, total=False):
     call_type: str  # "discovery" | "demo" | "pricing" | ...
     transcript_segments: list[dict]  # Serialized TranscriptSegment dicts
 
+    # Base metrics (zero LLM cost)
+    base_metrics: dict | None
+
     # Pass 1
     pass1_result: dict | None  # Serialized Pass1Result
 
