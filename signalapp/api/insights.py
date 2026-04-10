@@ -269,6 +269,7 @@ _FW_GROUP_MAP = {
     "Commitment Thermometer": "B", "Pushback Classification": "B",
     "Question Quality": "C", "Frame Match Score": "C", "Close Attempt Analysis": "C",
     "Methodology Compliance": "C", "Call Structure Analysis": "C", "Objection Response Score": "C",
+    "NEPQ Sequence Adherence": "D", "Diagnostic Depth": "D", "Self-Generated Commitment": "D",
     "Emotional Turning Points": "E", "Emotional Trigger Analysis": "E",
 }
 

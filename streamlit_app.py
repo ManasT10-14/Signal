@@ -58,6 +58,7 @@ FW_GROUPS = {
     "A": ("Negotiation Intelligence", ["BATNA Detection", "Money Left on Table", "First Number Tracker", "Deal Health at Close", "Deal Timing Intelligence"]),
     "B": ("Pragmatic Intelligence", ["Unanswered Questions", "Commitment Quality", "Commitment Thermometer", "Pushback Classification"]),
     "C": ("Strategic Clarity", ["Question Quality", "Frame Match Score", "Close Attempt Analysis", "Methodology Compliance", "Call Structure Analysis", "Objection Response Score"]),
+    "D": ("NEPQ Methodology", ["NEPQ Sequence Adherence", "Diagnostic Depth", "Self-Generated Commitment"]),
     "E": ("Emotional Resonance", ["Emotional Turning Points", "Emotional Trigger Analysis"]),
 }
 FW_NAME_TO_GROUP = {}
@@ -1018,7 +1019,7 @@ def _render_frameworks(insights):
         group = ins.get("prompt_group") or _fw_group_for(fw_name)
         grouped.setdefault(group, []).append(ins)
 
-    for gid in ["A", "B", "C", "E"]:
+    for gid in ["A", "B", "C", "D", "E"]:
         items = grouped.get(gid, [])
         group_label = FW_GROUPS.get(gid, (f"Group {gid}", []))[0]
 

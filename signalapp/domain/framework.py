@@ -200,4 +200,23 @@ FRAMEWORK_REGISTRY: dict[int, dict] = {
         "prompt_file": "group_c/objection_response_v1",
         "severity_threshold": 0.70,
     },
+    # Group D — NEPQ Methodology Intelligence
+    20: {
+        "name": "NEPQ Sequence Adherence",
+        "group": "D",
+        "prompt_file": "group_d/nepq_sequence_v1",
+        "severity_threshold": 0.65,
+    },
+    21: {
+        "name": "Diagnostic Depth",
+        "group": "D",
+        "prompt_file": "group_d/diagnostic_depth_v1",
+        "severity_threshold": 0.65,
+    },
+    22: {
+        "name": "Self-Generated Commitment",
+        "group": "D",
+        "prompt_file": "group_d/self_generated_commitment_v1",
+        "severity_threshold": 0.70,
+    },
 }

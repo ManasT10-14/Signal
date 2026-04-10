@@ -18,6 +18,10 @@ FRAMEWORK_NAMES: dict[int, str] = {
     15: "Call Structure Analysis",
     16: "Pushback Classification",
     17: "Objection Response Score",
+    # Group D — NEPQ Methodology Intelligence
+    20: "NEPQ Sequence Adherence",
+    21: "Diagnostic Depth",
+    22: "Self-Generated Commitment",
 }
 
 FRAMEWORK_DESCRIPTIONS: dict[int, str] = {
@@ -38,6 +42,10 @@ FRAMEWORK_DESCRIPTIONS: dict[int, str] = {
     15: "Phase progression — discovery → demo → objections → close",
     16: "Objection vs. concern vs. rejection — each needs different response",
     17: "LAER framework quality per objection handled",
+    # Group D — NEPQ
+    20: "8-phase NEPQ questioning flow adherence — sequence, completeness, and phase depth",
+    21: "Probing depth below surface answers — escalation from specific to emotional to quantified",
+    22: "Whether buyer commitments were self-generated through questioning or externally pushed by rep",
 }
 
 
