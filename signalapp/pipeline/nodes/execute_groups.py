@@ -38,10 +38,8 @@ FW_PROMPT_MAP: dict[int, tuple[str, str, str]] = {
     # Group E — Emotional Resonance
     8: ("E", "signalapp.prompts.groups.group_e.emotional_turning_points_v1", "EmotionTriggerOutput"),
     9: ("E", "signalapp.prompts.groups.group_e.emotional_turning_points_v1", "EmotionTriggerOutput"),
-    # Group D — NEPQ Methodology Intelligence
-    20: ("D", "signalapp.prompts.groups.group_d.nepq_sequence_v1", "NEPQSequenceOutput"),
-    21: ("D", "signalapp.prompts.groups.group_d.diagnostic_depth_v1", "DiagnosticDepthOutput"),
-    22: ("D", "signalapp.prompts.groups.group_d.self_generated_commitment_v1", "SelfGeneratedCommitmentOutput"),
+    # Group F — NEPQ Methodology Intelligence
+    20: ("F", "signalapp.prompts.groups.group_f.nepq_analysis_v1", "NEPQAnalysisOutput"),
 }
 
 
@@ -50,8 +48,8 @@ GROUP_LLM_CONFIG_KEY: dict[str, str] = {
     "A": "llm_group_a",
     "B": "llm_group_b",
     "C": "llm_group_c",
-    "D": "llm_group_d",
     "E": "llm_group_e",
+    "F": "llm_group_f",
 }
 
 
@@ -273,12 +271,8 @@ def _to_framework_output(fw_id: int, raw_result) -> FrameworkOutput:
         score = raw_result.urgency_score * 100
     elif hasattr(raw_result, "buyer_leverage_score"):
         score = raw_result.buyer_leverage_score * 100
-    elif hasattr(raw_result, "sequence_score"):
-        score = raw_result.sequence_score * 100
-    elif hasattr(raw_result, "depth_score"):
-        score = raw_result.depth_score * 100
-    elif hasattr(raw_result, "self_generated_ratio"):
-        score = raw_result.self_generated_ratio * 100
+    elif hasattr(raw_result, "nepq_score"):
+        score = raw_result.nepq_score * 100
 
     # Get AIM output if present
     aim_output = None

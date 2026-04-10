@@ -103,24 +103,12 @@ ROUTING_TABLE: dict[int, FrameworkRoutingSpec] = {
         fw_id=17,
         blocked_for={"check_in"},
     ),
-    # ── Group D — NEPQ Methodology Intelligence (Phase 2) ──
-    20: FrameworkRoutingSpec(  # NEPQ Sequence Adherence
+    # ── Group F — NEPQ Methodology Intelligence ──
+    20: FrameworkRoutingSpec(  # NEPQ Methodology Analysis (unified)
         fw_id=20,
         mandatory_for={"discovery", "demo"},
         blocked_for={"check_in"},
         required_signal="has_rep_questions",
-    ),
-    21: FrameworkRoutingSpec(  # Diagnostic Depth
-        fw_id=21,
-        mandatory_for={"discovery"},
-        blocked_for={"check_in"},
-        required_signal="has_rep_questions",
-    ),
-    22: FrameworkRoutingSpec(  # Self-Generated Commitment
-        fw_id=22,
-        mandatory_for={"demo", "pricing", "negotiation", "close"},
-        blocked_for={"check_in"},
-        required_signal="has_close_language",
     ),
 }
 
@@ -129,7 +117,8 @@ GROUP_MEMBERSHIP: dict[str, set[int]] = {
     "A": {3, 4, 7, 12, 13},
     "B": {1, 2, 6, 16},
     "C": {5, 10, 11, 14, 15, 17},
-    "D": {20, 21, 22},  # Methodology Intelligence (NEPQ)
+    "D": set(),  # Phase 2 — Deal Health (reserved for future)
+    "F": {20},  # NEPQ Methodology Intelligence
     "E": {8, 9},
 }
 
@@ -138,8 +127,7 @@ DEPENDENCY_RULES: list[tuple[int, set[int]]] = [
     (9, {8}),  # Emotion Trigger requires Emotional Turning Points
     (14, {5, 15}),  # Methodology requires Question Quality + Call Structure
     (17, {16}),  # Objection Response requires Pushback Classification
-    (20, {15}),  # NEPQ Sequence requires Call Structure
-    (22, {2}),  # Self-Generated Commitment requires Commitment Quality
+    (20, {15}),  # NEPQ Analysis requires Call Structure
 ]
 
 
@@ -253,7 +241,7 @@ def route_frameworks(
     Returns (active_framework_ids, routing_decisions).
     """
     if all_frameworks is None:
-        all_frameworks = set(range(1, 18)) | {20, 21, 22}
+        all_frameworks = set(range(1, 18)) | {20}
 
     decisions = []
     active = set()

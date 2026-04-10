@@ -65,7 +65,7 @@ class AppConfig:
     llm_group_a: LLMGroupConfig = field(default_factory=lambda: LLMGroupConfig(temperature=0.05))    # Classification
     llm_group_b: LLMGroupConfig = field(default_factory=lambda: LLMGroupConfig(temperature=0.05))    # Classification
     llm_group_c: LLMGroupConfig = field(default_factory=lambda: LLMGroupConfig(temperature=0.10))    # Interpretation
-    llm_group_d: LLMGroupConfig = field(default_factory=lambda: LLMGroupConfig(temperature=0.10))    # NEPQ methodology
+    llm_group_f: LLMGroupConfig = field(default_factory=lambda: LLMGroupConfig(temperature=0.10))    # NEPQ methodology
     llm_group_e: LLMGroupConfig = field(default_factory=lambda: LLMGroupConfig(temperature=0.10))    # Interpretation
     llm_summary: LLMGroupConfig = field(default_factory=lambda: LLMGroupConfig(temperature=0.25))    # Generation
 
@@ -117,7 +117,7 @@ def load_config() -> AppConfig:
             config.llm_group_a,
             config.llm_group_b,
             config.llm_group_c,
-            config.llm_group_d,
+            config.llm_group_f,
             config.llm_group_e,
             config.llm_summary,
         ]:
