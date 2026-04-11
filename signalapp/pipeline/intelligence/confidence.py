@@ -1,16 +1,15 @@
 """
 Calibrated confidence scoring.
 
-Replaces raw LLM self-reported confidence with a computed score based on
-measurable evidence quality factors (per LLM_RELIABILITY_GUIDE.md).
+Blends LLM self-reported confidence with evidence quality signals.
+When evidence is available, it adjusts confidence up/down based on quality.
+When evidence is absent (common with structured output), it trusts
+the LLM's confidence more heavily since the LLM still evaluated the transcript.
 
-Formula:
-  base = 0.40
-  + min(0.20, evidence_count * 0.07)        # more evidence = higher confidence
-  + (avg_quote_match - 0.75) * 0.15         # better quote quality
-  + min(0.15, (pattern_count - 1) * 0.08)   # recurring patterns
-  - alternative_explanations * 0.08          # alternatives reduce confidence
-  + cross_framework_agreement * 0.05         # corroboration
+The key insight: absence of evidence metadata (segment_ids, quotes) doesn't
+mean the analysis is wrong — it means the structured output schema didn't
+capture evidence details. The LLM still read the transcript and reasoned
+about it.
 """
 from __future__ import annotations
 
@@ -25,37 +24,27 @@ def compute_calibrated_confidence(
 ) -> float:
     """Compute calibrated confidence from evidence quality signals.
 
-    Args:
-        evidence_count: Number of verified evidence items
-        avg_quote_match: Average fuzzy match score of evidence quotes (0-1)
-        pattern_recurrence: How many times the pattern repeats in transcript
-        alternative_explanations: Number of innocent alternative explanations
-        cross_framework_agreement: Agreement with other frameworks (0-1)
-        raw_confidence: Original LLM self-reported confidence (used as tiebreaker)
-
-    Returns:
-        Calibrated confidence score (0.0 - 1.0)
+    When evidence is present: blend raw confidence with evidence quality.
+    When evidence is absent: trust raw confidence with a small penalty.
     """
-    score = 0.40  # base
+    if evidence_count > 0:
+        # Evidence exists — blend raw confidence (60%) with evidence quality (40%)
+        evidence_quality = 0.0
+        evidence_quality += min(0.30, evidence_count * 0.10)  # more evidence = better
+        if avg_quote_match > 0:
+            evidence_quality += avg_quote_match * 0.20  # quote match quality
+        evidence_quality += min(0.15, max(0, (pattern_recurrence - 1)) * 0.08)
+        evidence_quality -= alternative_explanations * 0.05
+        evidence_quality += cross_framework_agreement * 0.05
+        evidence_quality = max(0.0, min(1.0, evidence_quality + 0.30))  # base evidence quality
 
-    # Evidence count contribution (up to 0.20)
-    score += min(0.20, evidence_count * 0.07)
-
-    # Quote match quality contribution
-    if avg_quote_match > 0:
-        score += (avg_quote_match - 0.75) * 0.15
-
-    # Pattern recurrence contribution (up to 0.15)
-    score += min(0.15, max(0, (pattern_recurrence - 1)) * 0.08)
-
-    # Alternative explanations penalty
-    score -= alternative_explanations * 0.08
-
-    # Cross-framework agreement boost
-    score += cross_framework_agreement * 0.05
-
-    # Use raw confidence as small tiebreaker (5% weight)
-    score += (raw_confidence - 0.5) * 0.05
+        score = (raw_confidence * 0.60) + (evidence_quality * 0.40)
+    else:
+        # No evidence metadata — trust raw confidence with small penalty
+        # The LLM still read the transcript; it just didn't produce segment_ids
+        penalty = 0.05  # small penalty for no verifiable evidence
+        agreement_boost = cross_framework_agreement * 0.08
+        score = raw_confidence - penalty + agreement_boost
 
     return max(0.0, min(1.0, round(score, 3)))
 
