@@ -1,0 +1,437 @@
+{
+  "Discovery": {
+    "call_type": "discovery",
+    "insights": [
+      {
+        "id": "afb05506-3353-4a74-9af2-5d1a1cab800a",
+        "call_id": "e9ea462d-aed5-4358-bc73-5049c17dd7bc",
+        "framework_result_id": "da163827-9cd4-44f3-a17d-c1c3f1f62881",
+        "prompt_group": "C",
+        "priority_rank": 1,
+        "is_top_insight": true,
+        "is_aim_null_finding": false,
+        "framework_name": "Call Structure Analysis",
+        "severity": "orange",
+        "confidence": 0.845,
+        "headline": "Excellent Discovery, but Missed Value Presentation and Lopsided Structure",
+        "explanation": "The call featured a strong discovery phase where the rep effectively probed Jennifer's pain points, urgency, and the impact of their current challenges. However, the rep transitioned directly from discovery to proposing next steps without presenting how their solution could address the identified needs. This resulted in a lopsided call structure, with discovery dominating over 75% of the conversation, and completely missing a value presentation phase.",
+        "evidence": [
+          {
+            "segment_id": "",
+            "timestamp": 0,
+            "speaker": "",
+            "quote": "",
+            "quote_match_score": 0.0,
+            "quote_verified": false
+          },
+          {
+            "segment_id": "",
+            "timestamp": 0,
+            "speaker": "",
+            "quote": "",
+            "quote_match_score": 0.0,
+            "quote_verified": false
+          },
+          {
+            "segment_id": "",
+            "timestamp": 0,
+            "speaker": "",
+            "quote": "",
+            "quote_match_score": 0.0,
+            "quote_verified": false
+          },
+          {
+            "segment_id": "",
+            "timestamp": 0,
+            "speaker": "",
+            "quote": "",
+            "quote_match_score": 0.0,
+            "quote_verified": false
+          },
+          {
+            "segment_id": "",
+            "timestamp": 0,
+            "speaker": "",
+            "quote": "",
+            "quote_match_score": 0.0,
+            "quote_verified": false
+          }
+        ],
+        "coaching_recommendation": "The call had excellent discovery, but the rep missed an opportunity to present value. After uncovering Jennifer's pain points and urgency, the rep transitioned directly to next steps without connecting how their solution could address the identified issues (e.g., improving win rates, handling procurement objections, retaining top performers). Aim for 10% opening, 30% discovery, 35% value presentation, 15% objection handling, and 10% close. Next time, after Jennifer states, 'Very. Our board meeting is in Q3 and I need to show improvement by then,' you could say: 'Jennifer, based on what you've shared about the drop in win rates, the challenges with procurement objections, and the risk to your top performers, our conversation intelligence platform is specifically designed to help sales teams identify and coach on these exact issues. For example, our AI can flag procurement objections in real-time and suggest best practices for handling them, which could directly impact your win rates and team morale. Would you be open to seeing a quick overview of how that works?'",
+        "created_at": "2026-04-11T09:36:54.566441"
+      },
+      {
+        "id": "e3cbc8de-e4eb-48de-aea8-d29c443ddceb",
+        "call_id": "e9ea462d-aed5-4358-bc73-5049c17dd7bc",
+        "framework_result_id": "ed7af347-9f73-4063-a61c-671fed86452d",
+        "prompt_group": "B",
+        "priority_rank": 2,
+        "is_top_insight": true,
+        "is_aim_null_finding": false,
+        "framework_name": "Commitment Quality",
+        "severity": "yellow",
+        "confidence": 0.91,
+        "headline": "Buyer made one non-committal statement, agreeing to receive information but not committing to any action.",
+        "explanation": "At [03:10], the buyer responded to the rep's proposal to send a one-pager and schedule a demo with 'That would be great. Send it over.' This is a social agreement to receive information, but it lacks any specific action, time-bound element, or ownership from the buyer to move the process forward. It's a passive acceptance, not a commitment to a next step, and therefore classified as a 'no commitment' instance.",
+        "evidence": [],
+        "coaching_recommendation": "At [03:10] the buyer said 'That would be great. Send it over.' This was a positive response to receiving the one-pager, but the rep also proposed scheduling a demo for next week, which the buyer did not explicitly commit to. The rep should have immediately sought a specific commitment for the demo. Next time, after the buyer agrees to receive the one-pager, the rep should say: 'Excellent, I'll get that one-pager to you right away. To make sure we keep momentum, what day and time next week works best for you and your team leads for that demo? I have Tuesday at 10 AM or Thursday at 2 PM open.'",
+        "created_at": "2026-04-11T09:36:54.566444"
+      },
+      {
+        "id": "3c8635f8-5b81-484e-a410-b809726a6953",
+        "call_id": "e9ea462d-aed5-4358-bc73-5049c17dd7bc",
+        "framework_result_id": "f5c29457-b200-4b86-a047-9b9cbf4396a9",
+        "prompt_group": "E",
+        "priority_rank": 3,
+        "is_top_insight": true,
+        "is_aim_null_finding": false,
+        "framework_name": "Emotional Trigger Analysis",
+        "severity": "yellow",
+        "confidence": 0.9,
+        "headline": "Rep skillfully navigates pain to positive next steps",
+        "explanation": "The rep effectively used probing questions to uncover deep pain points and the associated emotional impact on the buyer. While this led to initial negative emotional shifts as the buyer articulated their frustrations and fears, the rep then successfully transitioned to offering clear, actionable next steps, resulting in a significant positive shift towards eagerness and engagement.",
+        "evidence": [],
+        "coaching_recommendation": "At [02:55] you effectively transitioned from uncovering deep pain and urgency to offering a clear, actionable next step ('Let me send you a one-pager and we can schedule a demo for your team leads next week.'). This triggered a significant positive shift in Jennifer's sentiment, moving her from concern to eagerness ('That would be great. Send it over.'). This is an excellent example of how to move a prospect forward once their pain and urgency are fully understood. To further solidify the value proposition before proposing next steps, you could have explicitly linked your solution to her stated needs. Next time, consider saying: 'Given that you need to show improvement by your Q3 board meeting and are concerned about losing top performers, would it be helpful to see how our solution directly helps other companies prevent rep panic and improve win rates, starting with a one-pager and a demo for your team leads?'",
+        "created_at": "2026-04-11T09:36:54.566445"
+      },
+      {
+        "id": "c31da8dd-edd0-4a5a-9e93-f85498512014",
+        "call_id": "e9ea462d-aed5-4358-bc73-5049c17dd7bc",
+        "framework_result_id": "6e58dcb9-57cd-44bf-9f87-45a01299b117",
+        "prompt_group": "C",
+        "priority_rank": 4,
+        "is_top_insight": true,
+        "is_aim_null_finding": false,
+        "framework_name": "Frame Match Score",
+        "severity": "yellow",
+        "confidence": 0.85,
+        "headline": "Rep effectively uncovers buyer priorities but misses opportunity to frame next steps.",
+        "explanation": "The rep, Alex, demonstrated strong discovery skills by asking targeted questions that allowed the buyer, Jennifer, to articulate multiple critical business priorities. These included declining win rates, poor objection handling, lost deals, team morale issues, risk of losing top performers, shrinking margins, and an urgent Q3 deadline. This shows the rep was actively listening and framing his questions around the buyer's concerns. However, when proposing the next steps\u2014sending a one-pager and scheduling a demo\u2014the rep failed to explicitly connect these actions to Jennifer's stated priorities. This was a missed opportunity to align the proposed solution with the buyer's specific needs and urgency, instead offering generic next steps.",
+        "evidence": [],
+        "coaching_recommendation": "At [02:55] you offered a one-pager and demo, which is a good next step, but you missed the chance to connect it directly to Jennifer's urgent priorities. Instead, mirror the buyer's frame by explicitly linking your solution to her stated problems and deadlines. For example, you could say: 'That makes sense. Given your need to improve win rates, handle procurement objections better, and show improvement by Q3, this one-pager will specifically highlight how our conversation intelligence tools address those challenges. Then, we can schedule a demo to show your team leads exactly how it helps protect your margins and retain top performers.'",
+        "created_at": "2026-04-11T09:36:54.566447"
+      },
+      {
+        "id": "0629a698-88e7-4ea9-a5df-8c4437baaf62",
+        "call_id": "e9ea462d-aed5-4358-bc73-5049c17dd7bc",
+        "framework_result_id": "53ac65d4-33b5-482e-89c3-821f875df080",
+        "prompt_group": "B",
+        "priority_rank": 5,
+        "is_top_insight": true,
+        "is_aim_null_finding": false,
+        "framework_name": "Unanswered Questions",
+        "severity": "green",
+        "confidence": 0.95,
+        "headline": "Buyer answered all substantive questions directly and transparently",
+        "explanation": "The buyer, Jennifer, provided specific and actionable information for every question Alex (rep) asked. For example, when asked 'What prompted you to look at conversation intelligence tools right now?' at [00:00], Jennifer responded with concrete data: 'Our win rates dropped from 28 percent to 19 percent over two quarters' at [00:15]. She continued this pattern of direct and detailed responses throughout the call, explaining the cause of the drop, providing a specific example of a lost deal, describing the team's morale, outlining the consequences of inaction, and emphasizing the importance and timeline for fixing the issue.",
+        "evidence": [],
+        "coaching_recommendation": "The buyer was highly transparent and provided specific, actionable information for every question asked. The rep successfully uncovered significant pain points and urgency. The next step should be to build on this foundation by exploring the impact of these issues further and quantifying the potential value of a solution. For example, the rep could say: 'That's really clear, Jennifer. Given the impact on your top performers and shrinking margins, what would a successful resolution to this problem mean for your business in terms of revenue or retention?'",
+        "created_at": "2026-04-11T09:36:54.566449"
+      },
+      {
+        "id": "11093718-c0d0-41d0-b0f5-60444fc85c66",
+        "call_id": "e9ea462d-aed5-4358-bc73-5049c17dd7bc",
+        "framework_result_id": "c82f0ca2-c1b2-42f5-867b-d1bdb85eecb0",
+        "prompt_group": "B",
+        "priority_rank": 6,
+        "is_top_insight": false,
+        "is_aim_null_finding": false,
+        "framework_name": "Commitment Thermometer",
+        "severity": "green",
+        "confidence": 0.9,
+        "headline": "Buyer started warm and remained highly engaged, accepting next steps with enthusiasm.",
+        "explanation": "At [00:15] the buyer immediately articulated a significant problem: 'Our win rates dropped from 28 percent to 19 percent over two quarters,' indicating a warm starting temperature of 0.75. The buyer continued to elaborate on the problem and its severe consequences, such as 'We will lose our top performers' at [02:15] and a clear, time-bound need: 'Our board meeting is in Q3 and I need to show improvement by then' at [02:40], demonstrating a consistently high level of engagement and urgency, reaching a temperature of 0.85. The call concluded with the buyer enthusiastically accepting the proposed next steps: 'That would be great. Send it over' at [03:10], maintaining a hot temperature of 0.85. The trajectory was stable, remaining highly engaged throughout the call.",
+        "evidence": [],
+        "coaching_recommendation": "The rep did an excellent job of uncovering and amplifying the buyer's pain and urgency, leading to a clear, accepted next step. To capitalize on this momentum, the rep should confirm the details of the one-pager and demo, and proactively gather information to tailor the demo. Say: 'Great, Jennifer. I'll send that one-pager right after this call. For the demo with your team leads next week, what are the top 1-2 things you'd like them to see or understand about how we can help with procurement objections?'",
+        "created_at": "2026-04-11T09:36:54.566450"
+      },
+      {
+        "id": "1d42ddfc-0c16-435f-b2d1-6ef442ed5a94",
+        "call_id": "e9ea462d-aed5-4358-bc73-5049c17dd7bc",
+        "framework_result_id": "dbfc3e72-806d-4ec7-b709-4e9cc3c26bff",
+        "prompt_group": "C",
+        "priority_rank": 7,
+        "is_top_insight": false,
+        "is_aim_null_finding": false,
+        "framework_name": "Question Quality",
+        "severity": "green",
+        "confidence": 0.882,
+        "headline": "Excellent Diagnostic Questioning: Rep Consistently Uncovered Deep Pain and Urgency",
+        "explanation": "The rep demonstrated exceptional diagnostic questioning throughout the call, consistently employing open-ended questions to uncover critical pain points, their impact, and the urgency for a solution. Every question asked was open-ended and highly diagnostic, allowing the buyer to articulate her situation thoroughly and providing the rep with a deep understanding of her needs and priorities. This approach effectively revealed the buyer's motivations, the root causes of her team's challenges, the emotional and financial impact, and the consequences of inaction.",
+        "evidence": [
+          {
+            "segment_id": "",
+            "timestamp": 0,
+            "speaker": "",
+            "quote": "",
+            "quote_match_score": 0.0,
+            "quote_verified": false
+          },
+          {
+            "segment_id": "",
+            "timestamp": 0,
+            "speaker": "",
+            "quote": "",
+            "quote_match_score": 0.0,
+            "quote_verified": false
+          },
+          {
+            "segment_id": "",
+            "timestamp": 0,
+            "speaker": "",
+            "quote": "",
+            "quote_match_score": 0.0,
+            "quote_verified": false
+          },
+          {
+            "segment_id": "",
+            "timestamp": 0,
+            "speaker": "",
+            "quote": "",
+            "quote_match_score": 0.0,
+            "quote_verified": false
+          },
+          {
+            "segment_id": "",
+            "timestamp": 0,
+            "speaker": "",
+            "quote": "",
+            "quote_match_score": 0.0,
+            "quote_verified": false
+          },
+          {
+            "segment_id": "",
+            "timestamp": 0,
+            "speaker": "",
+            "quote": "",
+            "quote_match_score": 0.0,
+            "quote_verified": false
+          }
+        ],
+        "coaching_recommendation": "While your question at [02:28] 'How important is fixing this before it gets worse?' was excellent and diagnostic, Jennifer's answer about the Q3 board meeting presented a critical opportunity to uncover more about the decision process and stakeholders. Instead of immediately suggesting a one-pager and demo, you could have continued to probe. Next time, try an open diagnostic question to explore the decision-making process: 'That's a critical timeline. What does the board need to see to be confident in a solution, and who else needs to be involved in evaluating options before then?'",
+        "created_at": "2026-04-11T09:36:54.566452"
+      },
+      {
+        "id": "f605e1d8-ba8f-4786-b107-64d4786c8981",
+        "call_id": "e9ea462d-aed5-4358-bc73-5049c17dd7bc",
+        "framework_result_id": "d3125682-8b9c-474c-b621-f3a9a1b1da9d",
+        "prompt_group": "F",
+        "priority_rank": 8,
+        "is_top_insight": false,
+        "is_aim_null_finding": false,
+        "framework_name": "NEPQ Methodology Analysis",
+        "severity": "orange",
+        "confidence": 0.892,
+        "headline": "Good diagnostic depth, but missing key NEPQ phases led to a rep-pushed next step.",
+        "explanation": "The rep effectively used Connecting, Problem Awareness, Consequence, and Qualifying phases, and demonstrated excellent diagnostic depth by probing the buyer's vague statements to uncover specific and emotional impacts. However, the call missed the Situation and Solution Awareness phases, which prevented the buyer from fully articulating their current state and ideal future. This led to the rep proposing the next steps rather than the buyer self-generating a commitment to move forward.",
+        "evidence": [
+          {
+            "segment_id": "4d1f36f4-a5ed-45d4-a421-0708aa7a6716",
+            "timestamp": 0,
+            "speaker": "Alex",
+            "quote": "What prompted you to look at conversation intelligence tools right now?",
+            "quote_match_score": 0.85,
+            "quote_verified": true
+          },
+          {
+            "segment_id": "d461fa5b-8588-4208-a9f0-1d88dcd0fc8e",
+            "timestamp": 0,
+            "speaker": "Jennifer",
+            "quote": "It was demoralizing. The whole team saw it. Now everyone thinks we just discount to win.",
+            "quote_match_score": 1.0,
+            "quote_verified": true
+          },
+          {
+            "segment_id": "c82a10ce-b8dd-4a7e-afa2-9cb1bdc8fe5e",
+            "timestamp": 0,
+            "speaker": "Jennifer",
+            "quote": "We will lose our top performers. Sarah already told me she is looking. And our margins will keep shrinking.",
+            "quote_match_score": 1.0,
+            "quote_verified": true
+          },
+          {
+            "segment_id": "55f62c09-6d84-4c6f-b865-b2a1ef368fbf",
+            "timestamp": 0,
+            "speaker": "Alex",
+            "quote": "That makes sense. Let me send you a one-pager and we can schedule a demo for your team leads next week.",
+            "quote_match_score": 1.0,
+            "quote_verified": true
+          }
+        ],
+        "coaching_recommendation": "DIAGNOSIS: The primary gap was missing Phase 4 (Solution Awareness) and a rep-pushed next step.\n\nCHAIN: Because the rep didn't guide the buyer to envision their ideal future state (Phase 4), the buyer didn't fully self-persuade on the need for a solution. This resulted in the rep proposing the next steps, leading to a weaker, rep-pushed agreement rather than a strong, self-generated commitment to move forward.\n\nMOMENT: At [02:55], Alex said, 'That makes sense. Let me send you a one-pager and we can schedule a demo for your team leads next week.' This was a critical moment where the rep took control of the next steps, missing the opportunity for the buyer to articulate their own reasons for moving forward.\n\nFIX: After Jennifer confirmed urgency at [02:40] by saying 'Very. Our board meeting is in Q3 and I need to show improvement by then,' the rep should have asked:\n  1. 'Jennifer, if you could wave a magic wand and completely solve this issue with reps not handling procurement objections well, what would that ideal future look like for your team and your win rates?'\n  2. 'And how would achieving that impact your board meeting in Q3?'\n  3. 'Based on what you've shared about losing top performers and needing to show improvement by Q3, do you feel a solution that helps reps handle procurement objections better could get you where you want to be? Why?'\n\nIMPACT: This approach would have allowed Jennifer to articulate her desired future state and the benefits of solving the problem in her own words. This self-persuasion would have led to a much stronger, self-generated commitment to the next steps, as she would have connected the solution directly to her stated pains and desired outcomes for the board meeting.",
+        "created_at": "2026-04-11T09:36:54.566453"
+      },
+      {
+        "id": "b53cb63f-1556-4ba1-98e7-64148825d954",
+        "call_id": "e9ea462d-aed5-4358-bc73-5049c17dd7bc",
+        "framework_result_id": "2f2d9ddf-044a-4432-892b-f18278f54b5b",
+        "prompt_group": "E",
+        "priority_rank": 9,
+        "is_top_insight": false,
+        "is_aim_null_finding": false,
+        "framework_name": "Emotional Turning Points",
+        "severity": "green",
+        "confidence": 0.85,
+        "headline": "Rep skillfully navigated buyer's pain and fear to secure enthusiastic next steps.",
+        "explanation": "The transcript directly shows several significant emotional turning points for the buyer. Initially, the buyer expressed frustration and disappointment regarding declining win rates and specific deal losses. The rep skillfully used pain and fear triggers to deepen the buyer's awareness of the problem's impact and future consequences, leading to a strong sense of urgency. Crucially, the rep then transitioned to a hope trigger by proposing clear, actionable next steps, which resulted in a significant positive shift in the buyer's sentiment, ending the call with enthusiasm and agreement.",
+        "evidence": [],
+        "coaching_recommendation": "At [02:55] you proposed clear next steps ('Let me send you a one-pager and we can schedule a demo for your team leads next week.'), which led to Jennifer's enthusiastic agreement ('That would be great. Send it over.' at [03:10]). This was an excellent example of providing a clear, low-friction path forward after uncovering significant pain and urgency. To replicate this, after confirming urgency and impact, you could say: 'Based on what you've shared about needing to show improvement by your Q3 board meeting, the next logical step would be to get this information in front of your team leads. How about I send over a brief summary and we schedule a quick 30-minute demo for them next week?'",
+        "created_at": "2026-04-11T09:36:54.566455"
+      }
+    ],
+    "summary": {
+      "call_id": "e9ea462d-aed5-4358-bc73-5049c17dd7bc",
+      "headline": "Moderate-risk call with engagement gaps",
+      "recap": "The rep conducted strong discovery, effectively uncovering Jennifer's significant pain points and urgency regarding declining win rates and team morale. However, the call lacked a value presentation, transitioning directly from discovery to next steps without connecting the solution to the identified needs, resulting in a lopsided structure. The buyer expressed eagerness to receive information but gave a non-committal agreement for a demo.",
+      "key_decisions": [
+        "Buyer agreed to receive a one-pager from the rep."
+      ],
+      "action_items_rep": [
+        "Send the one-pager to Jennifer immediately.",
+        "When proposing next steps, explicitly link the solution to the buyer's stated problems and deadlines (e.g., improving win rates, handling objections, Q3 deadline).",
+        "Seek a specific, time-bound commitment for the demo, offering specific dates/times (e.g., 'Tuesday at 10 AM or Thursday at 2 PM').",
+        "In future calls, aim for a more balanced call structure: 10% opening, 30% discovery, 35% value presentation, 15% objection handling, and 10% close.",
+        "After uncovering pain and urgency, present how the solution addresses those specific issues before proposing next steps.",
+        "Explore the impact of issues further and quantify potential value (e.g., 'what would a successful resolution mean for your business in terms of revenue or retention?')."
+      ],
+      "action_items_buyer": [
+        "Receive the one-pager from the rep."
+      ],
+      "open_questions": [],
+      "deal_assessment": "High potential due to significant buyer pain and urgency, and the buyer's transparency. However, the deal is at risk due to the rep's missed value presentation and failure to secure a firm, time-bound commitment for the next step.",
+      "coaching_focus": "The primary coaching opportunity is to ensure the rep transitions from discovery to a value presentation that explicitly links the solution to the buyer's identified pain points and urgency, rather than moving directly to next steps.",
+      "key_themes": [
+        "Excellent Discovery, but Missed Value Presentation and Lopsided Structure",
+        "Buyer made one non-committal statement, agreeing to receive information but not committing to any action.",
+        "Rep skillfully navigates pain to positive next steps"
+      ],
+      "top_insight": "Excellent Discovery, but Missed Value Presentation and Lopsided Structure",
+      "severity_breakdown": {
+        "red": 1,
+        "orange": 2,
+        "yellow": 2,
+        "green": 4
+      },
+      "total_insights": 9,
+      "frameworks_run": [
+        1,
+        2,
+        5,
+        6,
+        8,
+        9,
+        10,
+        15,
+        20
+      ],
+      "ai_summary_text": "The rep conducted strong discovery, effectively uncovering Jennifer's significant pain points and urgency regarding declining win rates and team morale. However, the call lacked a value presentation, transitioning directly from discovery to next steps without connecting the solution to the identified needs, resulting in a lopsided structure. The buyer expressed eagerness to receive information but gave a non-committal agreement for a demo.",
+      "base_metrics": {
+        "total_duration_seconds": 220.0,
+        "total_segments": 14,
+        "rep_talk_ratio": 0.455,
+        "buyer_talk_ratio": 0.545,
+        "rep_words": 86,
+        "buyer_words": 103,
+        "rep_wpm": 150,
+        "buyer_wpm": 150,
+        "rep_questions": 6,
+        "buyer_questions": 0,
+        "rep_filler_rate_per_min": 1.7,
+        "buyer_filler_rate_per_min": 0.0,
+        "rep_longest_monologue_seconds": 16.0,
+        "rep_longest_monologue_at_ms": 62000,
+        "buyer_longest_monologue_seconds": 30.0,
+        "buyer_longest_monologue_at_ms": 190000,
+        "interruption_count": 0,
+        "rep_avg_response_latency_seconds": 9.8,
+        "buyer_avg_response_latency_seconds": 8.4,
+        "silence_percentage": 53.3,
+        "longest_silence_seconds": 13.0,
+        "longest_silence_at_ms": 49000
+      },
+      "total_frameworks": 9
+    },
+    "metrics": {
+      "total_duration_seconds": 220.0,
+      "total_segments": 14,
+      "rep_talk_ratio": 0.455,
+      "buyer_talk_ratio": 0.545,
+      "rep_words": 86,
+      "buyer_words": 103,
+      "rep_wpm": 150,
+      "buyer_wpm": 150,
+      "rep_questions": 6,
+      "buyer_questions": 0,
+      "rep_filler_rate_per_min": 1.7,
+      "buyer_filler_rate_per_min": 0.0,
+      "rep_longest_monologue_seconds": 16.0,
+      "rep_longest_monologue_at_ms": 62000,
+      "buyer_longest_monologue_seconds": 30.0,
+      "buyer_longest_monologue_at_ms": 190000,
+      "interruption_count": 0,
+      "rep_avg_response_latency_seconds": 9.8,
+      "buyer_avg_response_latency_seconds": 8.4,
+      "silence_percentage": 53.3,
+      "longest_silence_seconds": 13.0,
+      "longest_silence_at_ms": 49000
+    }
+  },
+  "Negotiation": {
+    "call_type": "negotiation",
+    "insights": [],
+    "summary": {},
+    "metrics": {
+      "total_duration_seconds": 225.0,
+      "total_segments": 14,
+      "rep_talk_ratio": 0.528,
+      "buyer_talk_ratio": 0.472,
+      "rep_words": 132,
+      "buyer_words": 118,
+      "rep_wpm": 150,
+      "buyer_wpm": 150,
+      "rep_questions": 7,
+      "buyer_questions": 0,
+      "rep_filler_rate_per_min": 2.3,
+      "buyer_filler_rate_per_min": 1.3,
+      "rep_longest_monologue_seconds": 25.0,
+      "rep_longest_monologue_at_ms": 120000,
+      "buyer_longest_monologue_seconds": 30.0,
+      "buyer_longest_monologue_at_ms": 195000,
+      "interruption_count": 0,
+      "rep_avg_response_latency_seconds": 8.2,
+      "buyer_avg_response_latency_seconds": 7.0,
+      "silence_percentage": 43.8,
+      "longest_silence_seconds": 13.2,
+      "longest_silence_at_ms": 56800
+    }
+  },
+  "Check-in": {
+    "call_type": "check_in",
+    "insights": [],
+    "summary": {},
+    "metrics": {
+      "total_duration_seconds": 158.0,
+      "total_segments": 13,
+      "rep_talk_ratio": 0.579,
+      "buyer_talk_ratio": 0.421,
+      "rep_words": 84,
+      "buyer_words": 61,
+      "rep_wpm": 150,
+      "buyer_wpm": 150,
+      "rep_questions": 5,
+      "buyer_questions": 2,
+      "rep_filler_rate_per_min": 0.0,
+      "buyer_filler_rate_per_min": 2.5,
+      "rep_longest_monologue_seconds": 30.0,
+      "rep_longest_monologue_at_ms": 128000,
+      "buyer_longest_monologue_seconds": 17.0,
+      "buyer_longest_monologue_at_ms": 35000,
+      "interruption_count": 0,
+      "rep_avg_response_latency_seconds": 5.9,
+      "buyer_avg_response_latency_seconds": 6.3,
+      "silence_percentage": 46.3,
+      "longest_silence_seconds": 11.8,
+      "longest_silence_at_ms": 40200
+    }
+  }
+}
