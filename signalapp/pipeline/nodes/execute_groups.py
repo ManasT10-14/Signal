@@ -105,6 +105,7 @@ async def execute_groups_node(state: PipelineState) -> dict:
 
     # Format transcript for prompts
     transcript_text = _format_transcript(state["transcript_segments"])
+    call_type = state.get("call_type", "other")
     hedge_data = pass1_result.get("hedge_data", [])
     sentiment_data = pass1_result.get("sentiment_data", [])
     appraisal_data = pass1_result.get("appraisal_data", [])
@@ -137,6 +138,7 @@ async def execute_groups_node(state: PipelineState) -> dict:
                 provider="gemini",
             ),
             transcript_text=transcript_text,
+            call_type=call_type,
             hedge_data=hedge_data,
             sentiment_data=sentiment_data,
             appraisal_data=appraisal_data,
@@ -177,9 +179,10 @@ async def _run_framework(
     output_class_name: str,
     llm_config: LLMConfig,
     transcript_text: str,
-    hedge_data: list,
-    sentiment_data: list,
-    appraisal_data: list,
+    call_type: str = "other",
+    hedge_data: list = None,
+    sentiment_data: list = None,
+    appraisal_data: list = None,
 ):
     """Run a single framework LLM call and return FrameworkOutput."""
     import importlib
@@ -198,13 +201,17 @@ async def _run_framework(
     system_prompt = getattr(module, "SYSTEM_PROMPT", "")
     user_template = getattr(module, "USER_PROMPT", "")
 
-    # Format user prompt with pass1 data
-    user_prompt = user_template.format(
-        transcript_text=transcript_text,
-        pass1_hedge_data=json.dumps(hedge_data, indent=2) if hedge_data else "None",
-        pass1_sentiment_data=json.dumps(sentiment_data, indent=2) if sentiment_data else "None",
-        pass1_appraisal_data=json.dumps(appraisal_data, indent=2) if appraisal_data else "None",
-    )
+    # Format user prompt with pass1 data + call_type
+    format_kwargs = {
+        "transcript_text": transcript_text,
+        "pass1_hedge_data": json.dumps(hedge_data or [], indent=2) if hedge_data else "None",
+        "pass1_sentiment_data": json.dumps(sentiment_data or [], indent=2) if sentiment_data else "None",
+        "pass1_appraisal_data": json.dumps(appraisal_data or [], indent=2) if appraisal_data else "None",
+    }
+    # Add call_type if the template uses it (e.g., NEPQ prompt)
+    if "{call_type}" in user_template:
+        format_kwargs["call_type"] = call_type
+    user_prompt = user_template.format(**format_kwargs)
 
     full_prompt = f"{system_prompt}\n\n{user_prompt}"
 
