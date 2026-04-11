@@ -835,22 +835,34 @@ def _render_insights(insights):
         with st.container():
             hl, hr = st.columns([5, 1])
             with hl:
-                st.html(f'{sev_dot(sev)} <span style="font-size:11px;color:{TEXT_MUTED};font-weight:600">{fw_name[:40]}</span> <span class="sev-badge {sev}">{sev.upper()}</span>')
+                st.html(f'{sev_dot(sev)} <span style="font-size:11px;color:{TEXT_MUTED};font-weight:600">{fw_name}</span> <span class="sev-badge {sev}">{sev.upper()}</span>')
                 st.markdown(f"**{idx}. {headline}**")
             with hr:
                 st.html(f'<div style="text-align:right;font-size:22px;font-weight:800;color:{color}">{score}<span style="font-size:11px;color:{TEXT_MUTED}">%</span></div>')
 
-            st.markdown(f"<div style='font-size:13px;color:{TEXT_SECONDARY};line-height:1.5'>{explanation}</div>", unsafe_allow_html=True)
+            # Full explanation — no truncation
+            st.markdown(f"<div style='font-size:13px;color:{TEXT_SECONDARY};line-height:1.6'>{explanation}</div>", unsafe_allow_html=True)
 
-            for ev in evidence[:3]:
+            # Evidence quotes — show more, no truncation
+            for ev in evidence[:5]:
                 q = ev.get("quote", "")
                 ts = ev.get("timestamp", 0)
                 verified = " ✓" if ev.get("quote_verified") else ""
                 if q:
-                    st.html(f'<div class="evidence-quote">[{ts//60000:02d}:{(ts%60000)//1000:02d}] "{q[:120]}"{verified}</div>')
+                    st.html(f'<div class="evidence-quote">[{ts//60000:02d}:{(ts%60000)//1000:02d}] "{q}"{verified}</div>')
 
+            # Full coaching — NO truncation, displayed in expandable section
             if coaching and "Unable to generate" not in coaching:
-                st.html(f'<div class="coaching-box" style="margin-top:8px"><strong style="color:{ACCENT}">Coaching:</strong> {coaching[:350]}</div>')
+                # Show first 200 chars as preview, full text in expander
+                preview = coaching[:200].rstrip()
+                if len(coaching) > 200:
+                    st.html(f'<div class="coaching-box" style="margin-top:8px"><strong style="color:{ACCENT}">Coaching:</strong> {preview}...</div>')
+                    with st.expander("Read full coaching recommendation"):
+                        # Format coaching with line breaks for readability
+                        formatted = coaching.replace("DIAGNOSIS:", "\n**DIAGNOSIS:**").replace("CHAIN:", "\n**CHAIN:**").replace("MOMENT:", "\n**MOMENT:**").replace("FIX:", "\n**FIX:**").replace("IMPACT:", "\n**IMPACT:**")
+                        st.markdown(formatted)
+                else:
+                    st.html(f'<div class="coaching-box" style="margin-top:8px"><strong style="color:{ACCENT}">Coaching:</strong> {coaching}</div>')
 
             fb1, fb2, _ = st.columns([1, 1, 6])
             with fb1:
@@ -868,7 +880,13 @@ def _render_insights(insights):
                 sev = ins.get("severity", "yellow").lower()
                 color, _ = sev_color(sev)
                 score = int(ins.get("confidence", 0) * 100)
-                st.html(f'{sev_dot(sev)} <b>{ins.get("framework_name","")[:40]}</b> — {score}%: {ins.get("headline","")[:80]}')
+                headline = ins.get("headline", "")
+                coaching_r = ins.get("coaching_recommendation", "")
+                st.html(f'{sev_dot(sev)} <b>{ins.get("framework_name","")}</b> — {score}%')
+                st.caption(headline)
+                if coaching_r and "Unable to generate" not in coaching_r:
+                    with st.expander(f"Coaching for {ins.get('framework_name', '')[:30]}"):
+                        st.markdown(coaching_r)
 
 
 def _render_stats(metrics, summary):
@@ -1030,17 +1048,24 @@ def _render_frameworks(insights):
                 sev = ins.get("severity", "yellow").lower()
                 color, _ = sev_color(sev)
                 score = int(ins.get("confidence", 0) * 100)
+                explanation = ins.get("explanation", "")
+                coaching_fw = ins.get("coaching_recommendation", "")
                 st.html(f"""
-                <div style="padding:8px 12px;border-left:3px solid {color};margin-bottom:8px;border-radius:0 6px 6px 0;background:{BG_ELEVATED}">
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+                <div style="padding:10px 14px;border-left:3px solid {color};margin-bottom:10px;border-radius:0 6px 6px 0;background:{BG_ELEVATED}">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
                         {sev_dot(sev)}
                         <span style="font-weight:700;font-size:13px;color:{TEXT_PRIMARY}">{ins.get('framework_name','')}</span>
+                        <span class="sev-badge {sev}" style="font-size:9px">{sev.upper()}</span>
                         <span style="font-size:11px;color:{TEXT_MUTED}">{score}%</span>
                     </div>
-                    <div style="font-size:13px;font-weight:600;color:{TEXT_PRIMARY}">{ins.get('headline','')[:80]}</div>
-                    <div style="font-size:12px;color:{TEXT_SECONDARY};margin-top:2px">{ins.get('explanation','')[:200]}{"..." if len(ins.get('explanation',''))>200 else ""}</div>
+                    <div style="font-size:13px;font-weight:600;color:{TEXT_PRIMARY}">{ins.get('headline','')}</div>
+                    <div style="font-size:12px;color:{TEXT_SECONDARY};margin-top:4px;line-height:1.5">{explanation}</div>
                 </div>
                 """)
+                if coaching_fw and "Unable to generate" not in coaching_fw:
+                    with st.expander(f"Coaching: {ins.get('framework_name', '')[:30]}"):
+                        formatted = coaching_fw.replace("DIAGNOSIS:", "\n**DIAGNOSIS:**").replace("CHAIN:", "\n**CHAIN:**").replace("MOMENT:", "\n**MOMENT:**").replace("FIX:", "\n**FIX:**").replace("IMPACT:", "\n**IMPACT:**")
+                        st.markdown(formatted)
 
     # Other/ungrouped
     other = grouped.get("Other", [])
