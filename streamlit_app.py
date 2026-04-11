@@ -856,10 +856,9 @@ def _render_insights(insights):
                 # Show first 200 chars as preview, full text in expander
                 preview = coaching[:200].rstrip()
                 if len(coaching) > 200:
-                    st.html(f'<div class="coaching-box" style="margin-top:8px"><strong style="color:{ACCENT}">Coaching:</strong> {preview}...</div>')
+                    st.html(f'<div class="coaching-box" style="margin-top:8px"><strong style="color:{ACCENT}">Coaching:</strong> {preview.replace(chr(36), "&#36;")}...</div>')
                     with st.expander("Read full coaching recommendation"):
-                        # Format coaching with line breaks for readability
-                        formatted = coaching.replace("DIAGNOSIS:", "\n**DIAGNOSIS:**").replace("CHAIN:", "\n**CHAIN:**").replace("MOMENT:", "\n**MOMENT:**").replace("FIX:", "\n**FIX:**").replace("IMPACT:", "\n**IMPACT:**")
+                        formatted = coaching.replace("DIAGNOSIS:", "\n**DIAGNOSIS:**").replace("CHAIN:", "\n**CHAIN:**").replace("MOMENT:", "\n**MOMENT:**").replace("FIX:", "\n**FIX:**").replace("IMPACT:", "\n**IMPACT:**").replace("$", "\\$")
                         st.markdown(formatted)
                 else:
                     st.html(f'<div class="coaching-box" style="margin-top:8px"><strong style="color:{ACCENT}">Coaching:</strong> {coaching}</div>')
@@ -886,7 +885,7 @@ def _render_insights(insights):
                 st.caption(headline)
                 if coaching_r and "Unable to generate" not in coaching_r:
                     with st.expander(f"Coaching for {ins.get('framework_name', '')[:30]}"):
-                        st.markdown(coaching_r)
+                        st.markdown(coaching_r.replace("$", "\\$"))
 
 
 def _render_stats(metrics, summary):
@@ -1064,7 +1063,7 @@ def _render_frameworks(insights):
                 """)
                 if coaching_fw and "Unable to generate" not in coaching_fw:
                     with st.expander(f"Coaching: {ins.get('framework_name', '')[:30]}"):
-                        formatted = coaching_fw.replace("DIAGNOSIS:", "\n**DIAGNOSIS:**").replace("CHAIN:", "\n**CHAIN:**").replace("MOMENT:", "\n**MOMENT:**").replace("FIX:", "\n**FIX:**").replace("IMPACT:", "\n**IMPACT:**")
+                        formatted = coaching_fw.replace("DIAGNOSIS:", "\n**DIAGNOSIS:**").replace("CHAIN:", "\n**CHAIN:**").replace("MOMENT:", "\n**MOMENT:**").replace("FIX:", "\n**FIX:**").replace("IMPACT:", "\n**IMPACT:**").replace("$", "\\$")
                         st.markdown(formatted)
 
     # Other/ungrouped
