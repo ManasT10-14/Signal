@@ -1,15 +1,14 @@
 """
 Calibrated confidence scoring.
 
-Blends LLM self-reported confidence with evidence quality signals.
-When evidence is available, it adjusts confidence up/down based on quality.
-When evidence is absent (common with structured output), it trusts
-the LLM's confidence more heavily since the LLM still evaluated the transcript.
+Blends LLM self-reported confidence with evidence quality signals and
+additional contextual signals (severity, explanation depth, cross-framework
+agreement) to produce a well-spread confidence score.
 
-The key insight: absence of evidence metadata (segment_ids, quotes) doesn't
-mean the analysis is wrong — it means the structured output schema didn't
-capture evidence details. The LLM still read the transcript and reasoned
-about it.
+Evidence-present path: 60% raw + 40% evidence quality.
+Evidence-absent path: uses raw confidence with adjustments for severity
+coherence, explanation depth, and cross-framework agreement to ensure
+meaningful spread across insights.
 """
 from __future__ import annotations
 
@@ -21,11 +20,13 @@ def compute_calibrated_confidence(
     alternative_explanations: int = 0,
     cross_framework_agreement: float = 0.0,
     raw_confidence: float = 0.5,
+    severity: str = "green",
+    explanation_length: int = 0,
 ) -> float:
     """Compute calibrated confidence from evidence quality signals.
 
     When evidence is present: blend raw confidence with evidence quality.
-    When evidence is absent: trust raw confidence with a small penalty.
+    When evidence is absent: use multiple contextual signals for spread.
     """
     if evidence_count > 0:
         # Evidence exists — blend raw confidence (60%) with evidence quality (40%)
@@ -40,11 +41,36 @@ def compute_calibrated_confidence(
 
         score = (raw_confidence * 0.60) + (evidence_quality * 0.40)
     else:
-        # No evidence metadata — trust raw confidence with small penalty
-        # The LLM still read the transcript; it just didn't produce segment_ids
-        penalty = 0.05  # small penalty for no verifiable evidence
-        agreement_boost = cross_framework_agreement * 0.08
-        score = raw_confidence - penalty + agreement_boost
+        # No evidence metadata — use multiple signals for meaningful spread
+        score = raw_confidence
+
+        # Signal 1: Explanation depth proxy
+        # Longer, more detailed explanations suggest deeper analysis
+        if explanation_length > 500:
+            score += 0.03
+        elif explanation_length > 200:
+            pass  # neutral
+        elif explanation_length < 100:
+            score -= 0.05
+
+        # Signal 2: Severity-confidence coherence
+        # Red/orange findings with low raw confidence should be penalized
+        # Green findings with high confidence should be slightly boosted
+        if severity in ("red", "orange") and raw_confidence < 0.65:
+            score -= 0.08  # alarming finding but LLM wasn't confident
+        elif severity in ("red", "orange") and raw_confidence > 0.85:
+            score += 0.02  # strong conviction on critical finding
+        elif severity == "green" and raw_confidence > 0.80:
+            score += 0.02  # confident positive finding
+
+        # Signal 3: Cross-framework agreement (stronger effect than before)
+        if cross_framework_agreement > 0.6:
+            score += 0.06  # many frameworks agree
+        elif cross_framework_agreement < 0.3:
+            score -= 0.04  # frameworks disagree
+
+        # Signal 4: Small base penalty for no verifiable evidence
+        score -= 0.03
 
     return max(0.0, min(1.0, round(score, 3)))
 

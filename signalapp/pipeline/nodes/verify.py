@@ -60,6 +60,10 @@ async def verify_node(state: PipelineState) -> dict:
         is_aim_null = result.get("is_aim_null_finding", False)
         confidence = result.get("confidence", 0.0)
         headline = result.get("headline", "")
+
+        # Skip stubs from failed LLM calls — don't waste verification on them
+        if headline == "Analysis unavailable" or (confidence == 0.0 and not is_aim_null):
+            continue
         explanation = result.get("explanation", "")
         coaching = result.get("coaching_recommendation", "")
         severity_val = result.get("severity", "green")
@@ -165,6 +169,8 @@ async def verify_node(state: PipelineState) -> dict:
             alternative_explanations=0,
             cross_framework_agreement=cross_agreement,
             raw_confidence=confidence,
+            severity=severity_str,
+            explanation_length=len(explanation),
         )
 
         # Flag if raw confidence was very different from calibrated

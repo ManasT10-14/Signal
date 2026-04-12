@@ -339,8 +339,21 @@ hr {{ border-color: {BORDER} !important; }}
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _esc(text: str) -> str:
-    """Escape HTML and dollar signs for safe rendering."""
+    """Escape HTML and dollar signs for safe rendering in st.html() contexts."""
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("$", "&#36;")
+
+
+def _esc_md(text: str) -> str:
+    """Escape dollar signs for Streamlit markdown (prevents LaTeX rendering)."""
+    return text.replace("$", "\\$")
+
+
+def _format_coaching_text(text: str) -> str:
+    """Format coaching recommendation with bold section headers and escaped dollars."""
+    formatted = text
+    for keyword in ["DIAGNOSIS:", "CHAIN:", "MOMENT:", "FIX:", "IMPACT:"]:
+        formatted = formatted.replace(keyword, f"\n**{keyword}**")
+    return _esc_md(formatted)
 
 
 def sev_color(sev: str) -> tuple:
@@ -509,8 +522,8 @@ def page_dashboard():
                 sev = item.get("severity", "yellow")
                 color, _ = sev_color(sev)
                 deal = item.get("deal_name") or item.get("rep_name", "Unknown")
-                headline = item.get("headline", "")[:70]
-                fw = item.get("framework_name", "")[:25]
+                headline = item.get("headline", "")
+                fw = item.get("framework_name", "")
 
                 st.html(f"""
                 <div style="background:{BG_CARD};border:1px solid {BORDER};border-radius:10px;padding:14px 16px;margin-bottom:8px;border-left:3px solid {color}">
@@ -1141,6 +1154,8 @@ def _render_win_content(coaching):
 
 
 def _render_insights(insights):
+    # Filter out stubs
+    insights = [i for i in insights if i.get("headline") != "Analysis unavailable" and i.get("confidence", 0) > 0]
     st.markdown("### Top Insights")
     if not insights:
         st.info("No insights generated.")
@@ -1172,24 +1187,30 @@ def _render_insights(insights):
                 st.html(f'<div style="text-align:right;font-size:22px;font-weight:800;color:{color}">{score}<span style="font-size:11px;color:{TEXT_MUTED}">%</span></div>')
 
             # Full explanation — no truncation
-            st.markdown(f"<div style='font-size:13px;color:{TEXT_SECONDARY};line-height:1.6'>{explanation}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-size:13px;color:{TEXT_SECONDARY};line-height:1.6'>{_esc(explanation)}</div>", unsafe_allow_html=True)
 
-            # Evidence quotes — show more, no truncation
+            # Evidence quotes with verification badges
             for ev in evidence[:5]:
-                q = ev.get("quote", "")
-                ts = ev.get("timestamp", 0)
-                verified = " ✓" if ev.get("quote_verified") else ""
+                q = ev.get("quote", "") or ev.get("text_excerpt", "")
+                ts = ev.get("timestamp", 0) or ev.get("start_time_ms", 0)
+                verified = ev.get("quote_verified", False)
+                match_score = ev.get("quote_match_score", 0.0)
+                badge = ""
+                if verified:
+                    badge = f' <span style="color:{GREEN};font-size:10px;font-weight:600">VERIFIED {int(match_score*100)}%</span>'
+                elif match_score > 0:
+                    badge = f' <span style="color:{YELLOW};font-size:10px">~{int(match_score*100)}%</span>'
                 if q:
-                    st.html(f'<div class="evidence-quote">[{ts//60000:02d}:{(ts%60000)//1000:02d}] "{q}"{verified}</div>')
+                    st.html(f'<div class="evidence-quote">[{ts//60000:02d}:{(ts%60000)//1000:02d}] "{_esc(q)}"{badge}</div>')
 
             # Full coaching — NO truncation, displayed in expandable section
             if coaching and "Unable to generate" not in coaching:
                 # Show first 200 chars as preview, full text in expander
                 preview = coaching[:200].rstrip()
                 if len(coaching) > 200:
-                    st.html(f'<div class="coaching-box" style="margin-top:8px"><strong style="color:{ACCENT}">Coaching:</strong> {preview.replace(chr(36), "&#36;")}...</div>')
+                    st.html(f'<div class="coaching-box" style="margin-top:8px"><strong style="color:{ACCENT}">Coaching:</strong> {_esc(preview)}...</div>')
                     with st.expander("Read full coaching recommendation"):
-                        formatted = coaching.replace("DIAGNOSIS:", "\n**DIAGNOSIS:**").replace("CHAIN:", "\n**CHAIN:**").replace("MOMENT:", "\n**MOMENT:**").replace("FIX:", "\n**FIX:**").replace("IMPACT:", "\n**IMPACT:**").replace("$", "\\$")
+                        formatted = _format_coaching_text(coaching)
                         st.markdown(formatted)
                 else:
                     st.html(f'<div class="coaching-box" style="margin-top:8px"><strong style="color:{ACCENT}">Coaching:</strong> {coaching}</div>')
@@ -1215,8 +1236,8 @@ def _render_insights(insights):
                 st.html(f'{sev_dot(sev)} <b>{ins.get("framework_name","")}</b> — {score}%')
                 st.caption(headline)
                 if coaching_r and "Unable to generate" not in coaching_r:
-                    with st.expander(f"Coaching for {ins.get('framework_name', '')[:30]}"):
-                        st.markdown(coaching_r.replace("$", "\\$"))
+                    with st.expander(f"Coaching for {ins.get('framework_name', '')}"):
+                        st.markdown(_esc_md(coaching_r))
 
 
 def _render_stats(metrics, summary):
@@ -1251,10 +1272,11 @@ def _render_stats(metrics, summary):
 
     # 2-column grid
     c1, c2 = st.columns(2)
+    est = " (est.)" if metrics.get("wpm_estimated") else ""
     metric_pairs = [
         (c1, f"{metrics.get('rep_questions',0)} / {metrics.get('buyer_questions',0)}", "Questions (Rep / Buyer)"),
         (c2, f"{metrics.get('rep_filler_rate_per_min',0)} / {metrics.get('buyer_filler_rate_per_min',0)}", "Filler Words/Min"),
-        (c1, f"{metrics.get('rep_wpm',0)} / {metrics.get('buyer_wpm',0)}", "Words/Min (Rep / Buyer)"),
+        (c1, f"{metrics.get('rep_wpm',0)} / {metrics.get('buyer_wpm',0)}", f"Words/Min{est} (Rep / Buyer)"),
         (c2, str(metrics.get('interruption_count', 0)), "Interruptions"),
         (c1, f"{metrics.get('rep_longest_monologue_seconds',0)}s", "Longest Rep Monologue"),
         (c2, f"{metrics.get('rep_avg_response_latency_seconds',0)}s / {metrics.get('buyer_avg_response_latency_seconds',0)}s", "Response Latency"),
@@ -1350,10 +1372,12 @@ def _render_summary(summary, insights):
         st.markdown("**Key Concerns**")
         for ins in red_orange[:3]:
             sev = ins.get("severity", "yellow").lower()
-            st.html(f'{sev_dot(sev)} <b>{ins.get("framework_name","")}</b>: {ins.get("headline","")[:80]}')
+            st.html(f'{sev_dot(sev)} <b>{ins.get("framework_name","")}</b>: {ins.get("headline","")}')
 
 
 def _render_frameworks(insights):
+    # Filter out stubs
+    insights = [i for i in insights if i.get("headline") != "Analysis unavailable" and i.get("confidence", 0) > 0]
     st.markdown("### Framework Results")
     if not insights:
         st.info("No framework results available.")
@@ -1389,12 +1413,12 @@ def _render_frameworks(insights):
                         <span style="font-size:11px;color:{TEXT_MUTED}">{score}%</span>
                     </div>
                     <div style="font-size:13px;font-weight:600;color:{TEXT_PRIMARY}">{ins.get('headline','')}</div>
-                    <div style="font-size:12px;color:{TEXT_SECONDARY};margin-top:4px;line-height:1.5">{explanation}</div>
+                    <div style="font-size:12px;color:{TEXT_SECONDARY};margin-top:4px;line-height:1.5">{_esc(explanation)}</div>
                 </div>
                 """)
                 if coaching_fw and "Unable to generate" not in coaching_fw:
-                    with st.expander(f"Coaching: {ins.get('framework_name', '')[:30]}"):
-                        formatted = coaching_fw.replace("DIAGNOSIS:", "\n**DIAGNOSIS:**").replace("CHAIN:", "\n**CHAIN:**").replace("MOMENT:", "\n**MOMENT:**").replace("FIX:", "\n**FIX:**").replace("IMPACT:", "\n**IMPACT:**").replace("$", "\\$")
+                    with st.expander(f"Coaching: {ins.get('framework_name', '')}"):
+                        formatted = _format_coaching_text(coaching_fw)
                         st.markdown(formatted)
 
     # Other/ungrouped

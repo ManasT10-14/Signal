@@ -296,12 +296,12 @@ async def segment_coaching_node(state: PipelineState) -> dict:
     )
     full_prompt = f"{SYSTEM_PROMPT}\n\n{formatted_user}"
 
-    # Call LLM — use slightly higher temperature for creative coaching
+    # Call LLM — higher token limit for rich output, creative temperature
     provider = GeminiProvider()
     llm_config = LLMConfig(
         model=config.llm_pass1.model,
         temperature=0.20,
-        max_tokens=config.llm_pass1.max_tokens,
+        max_tokens=16384,  # Rich output model needs more than the default 8192
         provider="gemini",
     )
 
@@ -311,48 +311,72 @@ async def segment_coaching_node(state: PipelineState) -> dict:
             response_model=SegmentCoachingOutput,
             config=llm_config,
         )
-
-        # Post-process: ensure exactly one turning point
-        turning_points = [a for a in result.annotations if a.type == "turning_point"]
-        if len(turning_points) > 1:
-            # Keep only the highest deal_impact one
-            best_tp = max(turning_points, key=lambda a: a.deal_impact_score)
-            for a in turning_points:
-                if a.segment_index != best_tp.segment_index:
-                    a.type = "coaching"  # Downgrade extras to coaching
-
-        # Ensure wins have green severity
-        for a in result.annotations:
-            if a.type == "win":
-                a.severity = "green"
-
-        # Recount
-        coaching_count = sum(1 for a in result.annotations if a.type == "coaching")
-        signal_count = sum(1 for a in result.annotations if a.type == "signal")
-        win_count = sum(1 for a in result.annotations if a.type == "win")
-        tp_seg = next((a.segment_index for a in result.annotations if a.type == "turning_point"), -1)
-
-        coaching_dict = {
-            "annotations": [a.model_dump() for a in result.annotations],
-            "total_coaching_moments": coaching_count,
-            "total_signal_moments": signal_count,
-            "total_wins": win_count,
-            "turning_point_segment": tp_seg,
-            "overall_assessment": result.overall_assessment,
-            "conversation_arc": result.conversation_arc,
-            "rep_grade": result.rep_grade,
-            "strongest_skill": result.strongest_skill,
-            "biggest_growth_area": result.biggest_growth_area,
-        }
-
-        logger.info(
-            f"[segment_coaching] Generated {len(result.annotations)} annotations "
-            f"({coaching_count} coaching, {signal_count} signals, {win_count} wins, "
-            f"turning_point={tp_seg}) — grade={result.rep_grade}"
-        )
-
-        return {"segment_coaching": coaching_dict}
+        return {"segment_coaching": _post_process_coaching(result)}
 
     except Exception as e:
-        logger.warning(f"[segment_coaching] Failed: {e}")
-        return {"segment_coaching": None}
+        logger.warning(f"[segment_coaching] First attempt failed: {e}")
+
+        # Retry with fewer insights in context (smaller prompt → more output room)
+        try:
+            reduced_insights = insights_lines[:5]
+            reduced_insights_text = "\n\n".join(reduced_insights) if reduced_insights else "No framework insights available."
+            reduced_user = USER_PROMPT.format(
+                call_type=call_type,
+                transcript_text=transcript_text,
+                insights_text=reduced_insights_text,
+                metrics_text=metrics_text,
+            )
+            reduced_prompt = f"{SYSTEM_PROMPT}\n\n{reduced_user}"
+
+            result = await provider.complete_structured(
+                prompt=reduced_prompt,
+                response_model=SegmentCoachingOutput,
+                config=llm_config,
+            )
+            logger.info("[segment_coaching] Retry succeeded with reduced context")
+            return {"segment_coaching": _post_process_coaching(result)}
+
+        except Exception as e2:
+            logger.warning(f"[segment_coaching] Retry also failed: {e2}")
+            return {"segment_coaching": None}
+
+
+def _post_process_coaching(result: SegmentCoachingOutput) -> dict:
+    """Post-process LLM coaching output: enforce constraints, build output dict."""
+    # Ensure exactly one turning point
+    turning_points = [a for a in result.annotations if a.type == "turning_point"]
+    if len(turning_points) > 1:
+        best_tp = max(turning_points, key=lambda a: a.deal_impact_score)
+        for a in turning_points:
+            if a.segment_index != best_tp.segment_index:
+                a.type = "coaching"
+
+    # Ensure wins have green severity
+    for a in result.annotations:
+        if a.type == "win":
+            a.severity = "green"
+
+    # Recount
+    coaching_count = sum(1 for a in result.annotations if a.type == "coaching")
+    signal_count = sum(1 for a in result.annotations if a.type == "signal")
+    win_count = sum(1 for a in result.annotations if a.type == "win")
+    tp_seg = next((a.segment_index for a in result.annotations if a.type == "turning_point"), -1)
+
+    logger.info(
+        f"[segment_coaching] Generated {len(result.annotations)} annotations "
+        f"({coaching_count} coaching, {signal_count} signals, {win_count} wins, "
+        f"turning_point={tp_seg}) — grade={result.rep_grade}"
+    )
+
+    return {
+        "annotations": [a.model_dump() for a in result.annotations],
+        "total_coaching_moments": coaching_count,
+        "total_signal_moments": signal_count,
+        "total_wins": win_count,
+        "turning_point_segment": tp_seg,
+        "overall_assessment": result.overall_assessment,
+        "conversation_arc": result.conversation_arc,
+        "rep_grade": result.rep_grade,
+        "strongest_skill": result.strongest_skill,
+        "biggest_growth_area": result.biggest_growth_area,
+    }

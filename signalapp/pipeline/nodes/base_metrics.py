@@ -21,14 +21,28 @@ async def base_metrics_node(state: PipelineState) -> dict:
     if not segments:
         return {"base_metrics": _empty_metrics()}
 
-    # Estimate actual speaking duration from word count (~150 WPM average)
-    # This is needed because pasted transcripts have start times but no real end times
-    AVG_WPM = 150
-    for seg in segments:
-        words = seg.get("word_count", 0) or len(seg.get("text", "").split())
-        speaking_ms = max(int(words / AVG_WPM * 60 * 1000), 500)  # at least 0.5s
-        seg["_speaking_ms"] = speaking_ms
-        seg["_estimated_end_ms"] = seg.get("start_time_ms", 0) + speaking_ms
+    # Determine if timestamps are real (from [MM:SS] format) or synthetic (30s uniform)
+    real_ts = _has_real_timestamps(segments)
+
+    if real_ts:
+        # Real timestamps: use gap to next segment as speaking duration
+        for i, seg in enumerate(segments):
+            if i < len(segments) - 1:
+                gap = segments[i + 1].get("start_time_ms", 0) - seg.get("start_time_ms", 0)
+                seg["_speaking_ms"] = max(gap, 500)
+            else:
+                # Last segment: estimate from word count
+                words = seg.get("word_count", 0) or len(seg.get("text", "").split())
+                seg["_speaking_ms"] = max(int(words / 150 * 60 * 1000), 500)
+            seg["_estimated_end_ms"] = seg.get("start_time_ms", 0) + seg["_speaking_ms"]
+    else:
+        # Synthetic timestamps: estimate from word count (~150 WPM)
+        AVG_WPM = 150
+        for seg in segments:
+            words = seg.get("word_count", 0) or len(seg.get("text", "").split())
+            speaking_ms = max(int(words / AVG_WPM * 60 * 1000), 500)
+            seg["_speaking_ms"] = speaking_ms
+            seg["_estimated_end_ms"] = seg.get("start_time_ms", 0) + speaking_ms
 
     # Categorize segments by role
     rep_segs = [s for s in segments if s.get("speaker_role") == "rep"]
@@ -99,6 +113,7 @@ async def base_metrics_node(state: PipelineState) -> dict:
         "buyer_words": buyer_words,
         "rep_wpm": rep_wpm,
         "buyer_wpm": buyer_wpm,
+        "wpm_estimated": not real_ts,
         "rep_questions": rep_questions,
         "buyer_questions": buyer_questions,
         "rep_filler_rate_per_min": rep_filler_rate,
@@ -116,6 +131,20 @@ async def base_metrics_node(state: PipelineState) -> dict:
     }
 
     return {"base_metrics": metrics}
+
+
+def _has_real_timestamps(segments: list[dict]) -> bool:
+    """Detect if transcript has real [MM:SS] timestamps vs synthetic uniform spacing."""
+    if len(segments) < 2:
+        return False
+    starts = [s.get("start_time_ms", 0) for s in segments]
+    if all(s == 0 for s in starts):
+        return False
+    # Check if timestamps are synthetic (uniform 30s spacing from _parse_transcript)
+    diffs = [starts[i + 1] - starts[i] for i in range(len(starts) - 1)]
+    if diffs and all(d == 30000 for d in diffs):
+        return False
+    return True
 
 
 def _count_fillers(text: str) -> int:
@@ -138,7 +167,7 @@ def _longest_monologue(segments: list[dict], role: str) -> tuple[int, int]:
 
     for seg in segments:
         if seg.get("speaker_role") == role:
-            dur = seg.get("end_time_ms", 0) - seg.get("start_time_ms", 0)
+            dur = seg.get("_speaking_ms", seg.get("end_time_ms", 0) - seg.get("start_time_ms", 0))
             if current_duration == 0:
                 current_start = seg.get("start_time_ms", 0)
             current_duration += dur

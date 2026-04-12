@@ -27,6 +27,13 @@ async def generate_insights_node(state: PipelineState) -> dict:
     """
     verified_insights = state.get("verified_insights") or []
 
+    # Filter out stubs from failed LLM calls (defense in depth)
+    verified_insights = [
+        i for i in verified_insights
+        if i.get("headline") != "Analysis unavailable"
+        and (i.get("confidence", 0.0) > 0.0 or i.get("is_aim_null_finding"))
+    ]
+
     if not verified_insights:
         return {"verified_insights": []}
 

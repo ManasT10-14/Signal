@@ -142,6 +142,7 @@ async def execute_groups_node(state: PipelineState) -> dict:
             hedge_data=hedge_data,
             sentiment_data=sentiment_data,
             appraisal_data=appraisal_data,
+            transcript_segments=state["transcript_segments"],
         )
         tasks.append(task)
 
@@ -183,6 +184,7 @@ async def _run_framework(
     hedge_data: list = None,
     sentiment_data: list = None,
     appraisal_data: list = None,
+    transcript_segments: list = None,
 ):
     """Run a single framework LLM call and return FrameworkOutput."""
     import importlib
@@ -227,7 +229,7 @@ async def _run_framework(
             # Truncate headline if too long
             if hasattr(result, "headline") and result.headline and len(result.headline) > 120:
                 result.headline = result.headline[:117] + "..."
-            return _to_framework_output(fw_id, result)
+            return _to_framework_output(fw_id, result, transcript_segments)
         except Exception as e:
             last_error = str(e)[:200]
             logger.warning(f"[execute_groups] FW-{fw_id} attempt {attempt+1} failed: {last_error[:100]}")
@@ -251,7 +253,7 @@ async def _run_framework(
     return _stub_framework_output(fw_id, f"LLM call failed: {last_error}")
 
 
-def _to_framework_output(fw_id: int, raw_result) -> FrameworkOutput:
+def _to_framework_output(fw_id: int, raw_result, transcript_segments: list = None) -> FrameworkOutput:
     """Convert a Pydantic output model to a FrameworkOutput."""
     from signalapp.domain.framework import FrameworkOutput as FO, Severity
 
@@ -310,6 +312,12 @@ def _to_framework_output(fw_id: int, raw_result) -> FrameworkOutput:
             "text_excerpt": ev_dict.get("text_excerpt", ""),
         })
 
+    # If LLM didn't populate structured evidence, mine it from explanation text
+    explanation = getattr(raw_result, "explanation", "")
+    coaching = getattr(raw_result, "coaching_recommendation", "")
+    if not evidence_list and transcript_segments:
+        evidence_list = _extract_evidence_from_text(explanation, coaching, transcript_segments)
+
     # Build FrameworkOutput
     return FO(
         framework_id=f"FW-{fw_id:02d}",
@@ -318,9 +326,9 @@ def _to_framework_output(fw_id: int, raw_result) -> FrameworkOutput:
         severity=severity_enum,
         confidence=getattr(raw_result, "confidence", 0.5),
         headline=getattr(raw_result, "headline", f"Framework {fw_id} result"),
-        explanation=getattr(raw_result, "explanation", ""),
+        explanation=explanation,
         evidence=evidence_list,
-        coaching_recommendation=getattr(raw_result, "coaching_recommendation", ""),
+        coaching_recommendation=coaching,
         raw_analysis=raw_result.model_dump() if hasattr(raw_result, "model_dump") else {},
         is_aim_null_finding=is_aim_null,
         aim_output=aim_output,
@@ -344,6 +352,94 @@ def _stub_framework_output(fw_id: int, error: str) -> FrameworkOutput:
         raw_analysis={"error": error},
         is_aim_null_finding=False,
     )
+
+
+def _extract_evidence_from_text(
+    explanation: str, coaching: str, transcript_segments: list[dict]
+) -> list[dict]:
+    """
+    Mine evidence from LLM explanation/coaching text when structured evidence is empty.
+
+    Scans for [MM:SS] timestamps and quoted phrases, then fuzzy-matches against
+    transcript segments to build verified evidence items.
+    """
+    import re
+    from signalapp.pipeline.intelligence.quote_verify import verify_quote
+
+    if not transcript_segments:
+        return []
+
+    combined = f"{explanation}\n{coaching}"
+    if not combined.strip():
+        return []
+
+    evidence = []
+    seen_segments = set()
+
+    # Strategy 1: Find [MM:SS] timestamps and grab nearby quoted text
+    ts_pattern = re.compile(r'\[(\d{1,3}):(\d{2})\]')
+    quote_pattern = re.compile(r"""['"]([^'"]{10,200})['"]""")
+
+    for ts_match in ts_pattern.finditer(combined):
+        mins, secs = int(ts_match.group(1)), int(ts_match.group(2))
+        ts_ms = mins * 60000 + secs * 1000
+
+        # Find the segment closest to this timestamp
+        best_seg = None
+        best_dist = float("inf")
+        for seg in transcript_segments:
+            dist = abs(seg.get("start_time_ms", 0) - ts_ms)
+            if dist < best_dist:
+                best_dist = dist
+                best_seg = seg
+
+        if best_seg and best_dist < 15000:  # within 15s
+            seg_id = best_seg.get("segment_id", "")
+            if seg_id in seen_segments:
+                continue
+            seen_segments.add(seg_id)
+
+            # Look for a quote near this timestamp in the text
+            nearby_start = max(0, ts_match.start() - 20)
+            nearby_end = min(len(combined), ts_match.end() + 300)
+            nearby_text = combined[nearby_start:nearby_end]
+
+            quote_text = ""
+            qm = quote_pattern.search(nearby_text)
+            if qm:
+                quote_text = qm.group(1).strip()
+            else:
+                quote_text = best_seg.get("text", "")[:120]
+
+            evidence.append({
+                "segment_id": seg_id,
+                "start_time_ms": best_seg.get("start_time_ms", 0),
+                "speaker": best_seg.get("speaker_name", ""),
+                "text_excerpt": quote_text,
+            })
+
+    # Strategy 2: If no timestamps found, try matching quoted phrases directly
+    if not evidence:
+        for qm in quote_pattern.finditer(combined):
+            if len(evidence) >= 5:
+                break
+            quote_text = qm.group(1).strip()
+            score, seg_id, actual_text = verify_quote(
+                quote_text, transcript_segments, threshold=0.50
+            )
+            if score >= 0.50 and seg_id and seg_id not in seen_segments:
+                seen_segments.add(seg_id)
+                matched_seg = next(
+                    (s for s in transcript_segments if s.get("segment_id") == seg_id), {}
+                )
+                evidence.append({
+                    "segment_id": seg_id,
+                    "start_time_ms": matched_seg.get("start_time_ms", 0),
+                    "speaker": matched_seg.get("speaker_name", ""),
+                    "text_excerpt": actual_text or quote_text,
+                })
+
+    return evidence[:8]  # Cap at 8 evidence items
 
 
 def _format_transcript(segments: list[dict]) -> str:
