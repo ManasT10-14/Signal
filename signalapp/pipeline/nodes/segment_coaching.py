@@ -126,20 +126,24 @@ You're reviewing a sales call transcript SEGMENT BY SEGMENT. Your coaching must 
 
 ### type="win" (Rep or buyer segments showing excellent execution)
 - `what_was_great`: What the rep did brilliantly
-- `why_it_worked`: WHY this was effective (behavioral science explanation)
+- `why_it_worked`: WHY this was effective (behavioral science/psychology explanation)
+- `coaching_category`: The skill the rep demonstrated well
 - `deal_impact_score`: 1-10 (high = this win significantly helped the deal)
 - severity MUST be "green" for wins
 
 ### type="turning_point" (THE most critical moment — exactly ONE per call)
-- Same fields as "coaching" or "signal" depending on who's speaking
+A turning point can be POSITIVE (rep did something brilliant that saved the deal) or NEGATIVE (rep made a mistake that cost the deal). Use the appropriate fields:
+- For a NEGATIVE turning point (rep mistake): use what_was_said, what_to_say_instead, why, alternative_exchange. Severity should be "red" or "orange".
+- For a POSITIVE turning point (rep brilliance): use what_was_great, why_it_worked. Severity should be "green".
 - `deal_impact_score`: Should be 8-10
 - `deal_impact_explanation`: "This was THE moment that..." — make it clear why
+- `coaching_category`: Always provide
 
 ## SEVERITY GUIDE
 - "red" → Critical miss — this moment likely cost the deal (deal_impact 8-10)
 - "orange" → Significant coaching opportunity (deal_impact 5-7)
 - "yellow" → Minor improvement (deal_impact 2-4)
-- "green" → ONLY for type="win" — rep did great (deal_impact varies)
+- "green" → Rep did great — use for type="win" AND positive turning points
 
 ## MOMENTUM VALUES
 - "gaining" → Buyer is leaning in, asking questions, sharing information

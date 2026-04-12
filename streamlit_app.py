@@ -1022,7 +1022,13 @@ def _render_coached_segment(seg_idx, m, s, spk, text, role_class, coaching):
                 st.html(f'<div style="font-size:11px;color:{TEXT_SECONDARY};margin-bottom:8px;font-style:italic">{_esc(impact_text)}</div>')
 
         # ── Type-specific content ──
-        if c_type in ("coaching", "turning_point"):
+        if c_type == "turning_point":
+            # Positive turning point (green) uses win content; negative uses coaching
+            if sev == "green":
+                _render_win_content(coaching)
+            else:
+                _render_coaching_content(coaching)
+        elif c_type == "coaching":
             _render_coaching_content(coaching)
         elif c_type == "signal":
             _render_signal_content(coaching)
