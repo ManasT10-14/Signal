@@ -939,7 +939,7 @@ def _render_transcript(segments, call_id):
         st.caption(f"{len(filtered)} matches")
     else:
         coached = sum(1 for s in segments if s.get("coaching"))
-        wins = sum(1 for s in segments if s.get("coaching", {}).get("type") == "win")
+        wins = sum(1 for s in segments if (s.get("coaching") or {}).get("type") == "win")
         parts = [f"{len(segments)} segments"]
         if coached:
             parts.append(f"{coached} annotated")
