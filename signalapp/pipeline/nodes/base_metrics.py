@@ -25,15 +25,18 @@ async def base_metrics_node(state: PipelineState) -> dict:
     real_ts = _has_real_timestamps(segments)
 
     if real_ts:
-        # Real timestamps: use gap to next segment as speaking duration
+        # Real timestamps: speaking duration is the SHORTER of:
+        #   - gap to next segment (the actual time window)
+        #   - word-count-based estimate (how long the words take to say)
+        # The difference between word_estimate and gap = pause/silence time
         for i, seg in enumerate(segments):
+            words = seg.get("word_count", 0) or len(seg.get("text", "").split())
+            word_estimate_ms = max(int(words / 150 * 60 * 1000), 500)
             if i < len(segments) - 1:
                 gap = segments[i + 1].get("start_time_ms", 0) - seg.get("start_time_ms", 0)
-                seg["_speaking_ms"] = max(gap, 500)
+                seg["_speaking_ms"] = min(max(gap, 500), word_estimate_ms) if gap > 0 else word_estimate_ms
             else:
-                # Last segment: estimate from word count
-                words = seg.get("word_count", 0) or len(seg.get("text", "").split())
-                seg["_speaking_ms"] = max(int(words / 150 * 60 * 1000), 500)
+                seg["_speaking_ms"] = word_estimate_ms
             seg["_estimated_end_ms"] = seg.get("start_time_ms", 0) + seg["_speaking_ms"]
     else:
         # Synthetic timestamps: estimate from word count (~150 WPM)

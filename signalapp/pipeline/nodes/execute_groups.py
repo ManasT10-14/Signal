@@ -312,11 +312,22 @@ def _to_framework_output(fw_id: int, raw_result, transcript_segments: list = Non
             "text_excerpt": ev_dict.get("text_excerpt", ""),
         })
 
-    # If LLM didn't populate structured evidence, mine it from explanation text
     explanation = getattr(raw_result, "explanation", "")
     coaching = getattr(raw_result, "coaching_recommendation", "")
-    if not evidence_list and transcript_segments:
-        evidence_list = _extract_evidence_from_text(explanation, coaching, transcript_segments)
+
+    if transcript_segments:
+        # Fill empty text_excerpts by looking up actual segment text
+        _fill_empty_excerpts(evidence_list, transcript_segments)
+
+        # Mine additional evidence from explanation/coaching text
+        # Run as supplement (not just fallback) when evidence is sparse
+        if len(evidence_list) < 3:
+            mined = _extract_evidence_from_text(explanation, coaching, transcript_segments)
+            seen_ids = {e.get("segment_id") for e in evidence_list if e.get("segment_id")}
+            for m in mined:
+                if m.get("segment_id") not in seen_ids and len(evidence_list) < 8:
+                    evidence_list.append(m)
+                    seen_ids.add(m.get("segment_id"))
 
     # Build FrameworkOutput
     return FO(
@@ -354,14 +365,41 @@ def _stub_framework_output(fw_id: int, error: str) -> FrameworkOutput:
     )
 
 
+def _fill_empty_excerpts(evidence_list: list[dict], transcript_segments: list[dict]):
+    """Fill empty text_excerpt fields by looking up actual segment text."""
+    seg_lookup = {}
+    for seg in transcript_segments:
+        sid = seg.get("segment_id", "")
+        if sid:
+            seg_lookup[sid] = seg
+        # Also index by segment_index patterns like "seg_3", "segment_3"
+        idx = seg.get("segment_index")
+        if idx is not None:
+            seg_lookup[f"seg_{idx}"] = seg
+            seg_lookup[f"segment_{idx}"] = seg
+
+    for ev in evidence_list:
+        if ev.get("text_excerpt"):
+            continue
+        # Try to find the segment
+        sid = ev.get("segment_id", "")
+        seg = seg_lookup.get(sid)
+        if seg:
+            ev["text_excerpt"] = seg.get("text", "")[:150]
+            ev["speaker"] = ev.get("speaker") or seg.get("speaker_name", "")
+            ev["start_time_ms"] = ev.get("start_time_ms") or seg.get("start_time_ms", 0)
+
+
 def _extract_evidence_from_text(
     explanation: str, coaching: str, transcript_segments: list[dict]
 ) -> list[dict]:
     """
-    Mine evidence from LLM explanation/coaching text when structured evidence is empty.
+    Mine evidence from LLM explanation/coaching text.
 
-    Scans for [MM:SS] timestamps and quoted phrases, then fuzzy-matches against
-    transcript segments to build verified evidence items.
+    Three strategies:
+    1. [MM:SS] timestamps — find segment closest to timestamp, grab nearby quote
+    2. Segment references — "segment 3", "seg_5", "at segment 10"
+    3. Quoted phrases — fuzzy-match against transcript segments
     """
     import re
     from signalapp.pipeline.intelligence.quote_verify import verify_quote
@@ -376,15 +414,23 @@ def _extract_evidence_from_text(
     evidence = []
     seen_segments = set()
 
+    # Build index for fast segment lookup
+    seg_by_index = {}
+    for seg in transcript_segments:
+        idx = seg.get("segment_index")
+        if idx is not None:
+            seg_by_index[idx] = seg
+
     # Strategy 1: Find [MM:SS] timestamps and grab nearby quoted text
     ts_pattern = re.compile(r'\[(\d{1,3}):(\d{2})\]')
-    quote_pattern = re.compile(r"""['"]([^'"]{10,200})['"]""")
+    quote_pattern = re.compile(r"""['"\u201c\u201d]([^'"\u201c\u201d]{8,200})['"\u201c\u201d]""")
 
     for ts_match in ts_pattern.finditer(combined):
+        if len(evidence) >= 8:
+            break
         mins, secs = int(ts_match.group(1)), int(ts_match.group(2))
         ts_ms = mins * 60000 + secs * 1000
 
-        # Find the segment closest to this timestamp
         best_seg = None
         best_dist = float("inf")
         for seg in transcript_segments:
@@ -393,23 +439,23 @@ def _extract_evidence_from_text(
                 best_dist = dist
                 best_seg = seg
 
-        if best_seg and best_dist < 15000:  # within 15s
+        if best_seg and best_dist < 15000:
             seg_id = best_seg.get("segment_id", "")
             if seg_id in seen_segments:
                 continue
             seen_segments.add(seg_id)
 
-            # Look for a quote near this timestamp in the text
-            nearby_start = max(0, ts_match.start() - 20)
-            nearby_end = min(len(combined), ts_match.end() + 300)
+            # Look for a quote near this timestamp
+            nearby_start = max(0, ts_match.start() - 30)
+            nearby_end = min(len(combined), ts_match.end() + 400)
             nearby_text = combined[nearby_start:nearby_end]
 
             quote_text = ""
             qm = quote_pattern.search(nearby_text)
             if qm:
                 quote_text = qm.group(1).strip()
-            else:
-                quote_text = best_seg.get("text", "")[:120]
+            if not quote_text:
+                quote_text = best_seg.get("text", "")[:150]
 
             evidence.append({
                 "segment_id": seg_id,
@@ -418,28 +464,61 @@ def _extract_evidence_from_text(
                 "text_excerpt": quote_text,
             })
 
-    # Strategy 2: If no timestamps found, try matching quoted phrases directly
-    if not evidence:
-        for qm in quote_pattern.finditer(combined):
-            if len(evidence) >= 5:
-                break
-            quote_text = qm.group(1).strip()
-            score, seg_id, actual_text = verify_quote(
-                quote_text, transcript_segments, threshold=0.50
-            )
-            if score >= 0.50 and seg_id and seg_id not in seen_segments:
-                seen_segments.add(seg_id)
-                matched_seg = next(
-                    (s for s in transcript_segments if s.get("segment_id") == seg_id), {}
-                )
-                evidence.append({
-                    "segment_id": seg_id,
-                    "start_time_ms": matched_seg.get("start_time_ms", 0),
-                    "speaker": matched_seg.get("speaker_name", ""),
-                    "text_excerpt": actual_text or quote_text,
-                })
+    # Strategy 2: Find segment index references ("segment 3", "seg 5", "at segment 10")
+    seg_ref_pattern = re.compile(r'(?:segment|seg)[_\s]*(\d{1,3})', re.IGNORECASE)
+    for ref_match in seg_ref_pattern.finditer(combined):
+        if len(evidence) >= 8:
+            break
+        seg_idx = int(ref_match.group(1))
+        seg = seg_by_index.get(seg_idx)
+        if seg:
+            seg_id = seg.get("segment_id", "")
+            if seg_id in seen_segments:
+                continue
+            seen_segments.add(seg_id)
 
-    return evidence[:8]  # Cap at 8 evidence items
+            # Look for a nearby quote
+            nearby_start = max(0, ref_match.start() - 30)
+            nearby_end = min(len(combined), ref_match.end() + 400)
+            nearby_text = combined[nearby_start:nearby_end]
+
+            quote_text = ""
+            qm = quote_pattern.search(nearby_text)
+            if qm:
+                quote_text = qm.group(1).strip()
+            if not quote_text:
+                quote_text = seg.get("text", "")[:150]
+
+            evidence.append({
+                "segment_id": seg_id,
+                "start_time_ms": seg.get("start_time_ms", 0),
+                "speaker": seg.get("speaker_name", ""),
+                "text_excerpt": quote_text,
+            })
+
+    # Strategy 3: Match quoted phrases directly via fuzzy matching
+    for qm in quote_pattern.finditer(combined):
+        if len(evidence) >= 8:
+            break
+        quote_text = qm.group(1).strip()
+        if len(quote_text) < 12:
+            continue
+        score, seg_id, actual_text = verify_quote(
+            quote_text, transcript_segments, threshold=0.50
+        )
+        if score >= 0.50 and seg_id and seg_id not in seen_segments:
+            seen_segments.add(seg_id)
+            matched_seg = next(
+                (s for s in transcript_segments if s.get("segment_id") == seg_id), {}
+            )
+            evidence.append({
+                "segment_id": seg_id,
+                "start_time_ms": matched_seg.get("start_time_ms", 0),
+                "speaker": matched_seg.get("speaker_name", ""),
+                "text_excerpt": actual_text or quote_text,
+            })
+
+    return evidence[:8]
 
 
 def _format_transcript(segments: list[dict]) -> str:

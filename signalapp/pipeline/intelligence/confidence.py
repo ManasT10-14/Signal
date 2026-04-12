@@ -72,7 +72,8 @@ def compute_calibrated_confidence(
         # Signal 4: Small base penalty for no verifiable evidence
         score -= 0.03
 
-    return max(0.0, min(1.0, round(score, 3)))
+    # Hard cap at 0.98 — no analysis should claim 100% confidence
+    return max(0.0, min(0.98, round(score, 3)))
 
 
 def compute_cross_framework_agreement(

@@ -48,9 +48,17 @@ async def verify_node(state: PipelineState) -> dict:
     transcript_segments = state.get("transcript_segments", [])
     call_id = state["call_id"]
 
-    # Build segment lookup for validation
+    # Build segment lookup for validation (with seg_X alias resolution)
     valid_segment_ids = {seg.get("segment_id") for seg in transcript_segments if seg.get("segment_id")}
     segment_lookup = {seg.get("segment_id"): seg for seg in transcript_segments if seg.get("segment_id")}
+    # Map seg_N / segment_N aliases to real UUIDs (LLM prompts use seg_3 format)
+    _seg_alias_to_uuid = {}
+    for seg in transcript_segments:
+        idx = seg.get("segment_index")
+        sid = seg.get("segment_id", "")
+        if idx is not None and sid:
+            _seg_alias_to_uuid[f"seg_{idx}"] = sid
+            _seg_alias_to_uuid[f"segment_{idx}"] = sid
 
     verified_insights = []
     verification_flags = []
@@ -92,14 +100,20 @@ async def verify_node(state: PipelineState) -> dict:
                                                        "speaker": getattr(e, "speaker", ""),
                                                        "text_excerpt": getattr(e, "text_excerpt", "")}
             seg_id = ev.get("segment_id", "")
+            # Resolve seg_N aliases to real UUIDs
             if seg_id and seg_id not in valid_segment_ids:
-                verification_flags.append({
-                    "fw_id": fw_id,
-                    "gate": "gate_citation_quality",
-                    "severity": "warning",
-                    "message": f"Invalid segment_id: {seg_id} — hallucinated reference removed",
-                })
-                continue
+                resolved = _seg_alias_to_uuid.get(seg_id)
+                if resolved:
+                    seg_id = resolved
+                    ev["segment_id"] = resolved
+                else:
+                    verification_flags.append({
+                        "fw_id": fw_id,
+                        "gate": "gate_citation_quality",
+                        "severity": "warning",
+                        "message": f"Invalid segment_id: {seg_id} — hallucinated reference removed",
+                    })
+                    continue
             # Resolve timestamp from DB if segment exists
             if seg_id and seg_id in segment_lookup:
                 seg = segment_lookup[seg_id]

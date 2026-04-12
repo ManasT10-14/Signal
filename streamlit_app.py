@@ -1190,18 +1190,25 @@ def _render_insights(insights):
             st.markdown(f"<div style='font-size:13px;color:{TEXT_SECONDARY};line-height:1.6'>{_esc(explanation)}</div>", unsafe_allow_html=True)
 
             # Evidence quotes with verification badges
-            for ev in evidence[:5]:
+            shown_ev = 0
+            for ev in evidence:
+                if shown_ev >= 5:
+                    break
                 q = ev.get("quote", "") or ev.get("text_excerpt", "")
+                if not q or not q.strip():
+                    continue
                 ts = ev.get("timestamp", 0) or ev.get("start_time_ms", 0)
                 verified = ev.get("quote_verified", False)
                 match_score = ev.get("quote_match_score", 0.0)
+                spk = ev.get("speaker", "")
                 badge = ""
                 if verified:
-                    badge = f' <span style="color:{GREEN};font-size:10px;font-weight:600">VERIFIED {int(match_score*100)}%</span>'
+                    badge = f' <span style="color:{GREEN};font-size:10px;font-weight:600">VERIFIED</span>'
                 elif match_score > 0:
                     badge = f' <span style="color:{YELLOW};font-size:10px">~{int(match_score*100)}%</span>'
-                if q:
-                    st.html(f'<div class="evidence-quote">[{ts//60000:02d}:{(ts%60000)//1000:02d}] "{_esc(q)}"{badge}</div>')
+                spk_label = f' <span style="color:{TEXT_MUTED};font-size:10px">{_esc(spk)}</span>' if spk else ""
+                st.html(f'<div class="evidence-quote">[{ts//60000:02d}:{(ts%60000)//1000:02d}]{spk_label} "{_esc(q[:200])}"{badge}</div>')
+                shown_ev += 1
 
             # Full coaching — NO truncation, displayed in expandable section
             if coaching and "Unable to generate" not in coaching:
