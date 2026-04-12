@@ -186,6 +186,42 @@ async def get_call_transcript(
     ], key=lambda s: s["start_ms"])
 
 
+@router.get("/{call_id}/coaching-meta")
+async def get_coaching_meta(
+    call_id: str,
+    user_id: CurrentUserID,
+    call_repo: CallRepo,
+) -> dict:
+    """Return coaching metadata: grade, assessment, arc, stats."""
+    try:
+        call_uuid = uuid.UUID(call_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid call_id format")
+
+    call = await call_repo.get_by_id(call_uuid)
+    if call is None:
+        raise HTTPException(status_code=404, detail="Call not found")
+
+    if not call.analysis_runs:
+        return {"available": False}
+
+    latest_run = sorted(call.analysis_runs, key=lambda r: r.run_number, reverse=True)[0]
+    sc = latest_run.segment_coaching or {}
+
+    return {
+        "available": bool(sc),
+        "rep_grade": sc.get("rep_grade", ""),
+        "overall_assessment": sc.get("overall_assessment", ""),
+        "conversation_arc": sc.get("conversation_arc", ""),
+        "strongest_skill": sc.get("strongest_skill", ""),
+        "biggest_growth_area": sc.get("biggest_growth_area", ""),
+        "total_coaching_moments": sc.get("total_coaching_moments", 0),
+        "total_signal_moments": sc.get("total_signal_moments", 0),
+        "total_wins": sc.get("total_wins", 0),
+        "turning_point_segment": sc.get("turning_point_segment", -1),
+    }
+
+
 @router.post("/upload", response_model=UploadResponse)
 async def upload_call(
     user_id: CurrentUserID,

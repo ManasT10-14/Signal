@@ -100,6 +100,12 @@ def fetch_dashboard_summary():
     return r.json() if r.status_code == 200 else {}
 
 
+def fetch_coaching_meta(call_id: str) -> dict:
+    """Fetch coaching metadata: grade, arc, assessment, stats."""
+    r = api_get(f"/api/v1/calls/{call_id}/coaching-meta", timeout=10)
+    return r.json() if r.status_code == 200 else {}
+
+
 def fetch_insights(call_id: str):
     r = api_get(f"/api/v1/insights/call/{call_id}", timeout=10)
     return r.json() if r.status_code == 200 else None
@@ -260,11 +266,82 @@ hr {{ border-color: {BORDER} !important; }}
 ::-webkit-scrollbar {{ width: 6px; }}
 ::-webkit-scrollbar-track {{ background: {BG_PRIMARY}; }}
 ::-webkit-scrollbar-thumb {{ background: {BORDER}; border-radius: 3px; }}
+
+/* ── Coaching-specific styles ── */
+
+/* Grade badge */
+.grade-badge {{ display: inline-flex; align-items: center; justify-content: center;
+    width: 48px; height: 48px; border-radius: 12px; font-size: 24px; font-weight: 800;
+    letter-spacing: -1px; }}
+.grade-badge.grade-a {{ background: linear-gradient(135deg, #065F46, #047857); color: #6EE7B7; }}
+.grade-badge.grade-b {{ background: linear-gradient(135deg, #1E3A5F, #1D4ED8); color: #93C5FD; }}
+.grade-badge.grade-c {{ background: linear-gradient(135deg, #5C4E1E, #CA8A04); color: #FDE047; }}
+.grade-badge.grade-d {{ background: linear-gradient(135deg, #5C3A1E, #EA580C); color: #FDBA74; }}
+.grade-badge.grade-f {{ background: linear-gradient(135deg, #5C1E1E, #DC2626); color: #FCA5A5; }}
+
+/* Coaching category pills */
+.coach-cat {{ display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px;
+    font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-right: 4px; }}
+.coach-cat.questioning {{ background: #312E81; color: #C4B5FD; }}
+.coach-cat.objection_handling {{ background: #5C3A1E; color: #FDBA74; }}
+.coach-cat.rapport {{ background: #065F46; color: #6EE7B7; }}
+.coach-cat.closing {{ background: #5C1E1E; color: #FCA5A5; }}
+.coach-cat.value_selling {{ background: #1E3A5F; color: #93C5FD; }}
+.coach-cat.pacing {{ background: #4A1D5C; color: #D8B4FE; }}
+.coach-cat.active_listening {{ background: #1E5C4A; color: #5EEAD4; }}
+.coach-cat.commitment {{ background: #5C4E1E; color: #FDE047; }}
+
+/* Deal impact bar */
+.impact-bar {{ display: flex; align-items: center; gap: 6px; margin: 4px 0; }}
+.impact-bar .bar {{ flex: 1; height: 6px; background: {BG_ELEVATED}; border-radius: 3px; overflow: hidden; }}
+.impact-bar .fill {{ height: 100%; border-radius: 3px; transition: width 0.3s ease; }}
+
+/* Alternative exchange */
+.alt-exchange {{ background: {BG_ELEVATED}; border: 1px solid {BORDER}; border-radius: 10px; padding: 12px 16px; margin: 8px 0; }}
+.alt-turn {{ padding: 6px 0; display: flex; gap: 8px; align-items: flex-start; }}
+.alt-turn .role {{ font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; white-space: nowrap; margin-top: 2px; }}
+.alt-turn .role.rep-role {{ background: rgba(59,130,246,0.2); color: #60A5FA; }}
+.alt-turn .role.buyer-role {{ background: rgba(245,158,11,0.2); color: #FBBF24; }}
+.alt-turn .text {{ font-size: 13px; color: {TEXT_PRIMARY}; font-style: italic; line-height: 1.5; }}
+
+/* Turning point badge */
+.turning-point {{ position: relative; }}
+.turning-point::before {{ content: "TURNING POINT"; position: absolute; top: -10px; right: 12px;
+    background: linear-gradient(135deg, #DC2626, #EA580C); color: white;
+    font-size: 9px; font-weight: 800; padding: 2px 8px; border-radius: 4px;
+    letter-spacing: 1px; z-index: 10; }}
+
+/* Win celebration */
+.win-badge {{ display: inline-flex; align-items: center; gap: 4px; background: rgba(34,197,94,0.15);
+    border: 1px solid rgba(34,197,94,0.3); border-radius: 6px; padding: 2px 8px;
+    font-size: 11px; font-weight: 600; color: {GREEN}; }}
+
+/* Buyer thinking callout */
+.buyer-think {{ background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.25);
+    border-radius: 8px; padding: 10px 14px; margin: 6px 0; font-size: 13px; }}
+.buyer-think .label {{ font-size: 10px; font-weight: 700; color: #A78BFA; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 4px; }}
+
+/* Momentum indicators */
+.momentum {{ display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 600; }}
+.momentum.gaining {{ color: {GREEN}; }}
+.momentum.losing {{ color: {RED}; }}
+.momentum.neutral {{ color: {TEXT_MUTED}; }}
+
+/* Coaching meta header */
+.coaching-header {{ display: grid; grid-template-columns: auto 1fr 1fr 1fr; gap: 16px;
+    background: {BG_CARD}; border: 1px solid {BORDER}; border-radius: 12px;
+    padding: 16px 20px; margin-bottom: 16px; align-items: center; }}
 </style>
 """)
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
+def _esc(text: str) -> str:
+    """Escape HTML and dollar signs for safe rendering."""
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("$", "&#36;")
+
 
 def sev_color(sev: str) -> tuple:
     return SEV_COLORS.get(sev.lower(), (TEXT_MUTED, BG_ELEVATED))
@@ -725,11 +802,16 @@ def page_call_review():
     summary = insights_data.get("summary") or {}
     metrics = fetch_metrics(call_id)
     segments = fetch_transcript(call_id)
+    coaching_meta = fetch_coaching_meta(call_id)
 
     # One-line summary
     headline = summary.get("headline") if summary else None
     if headline:
         st.markdown(f"**{headline}**")
+
+    # Coaching meta header — grade, arc, skills
+    if coaching_meta.get("available"):
+        _render_coaching_header(coaching_meta)
 
     # 60/40 split
     col_left, col_right = st.columns([3, 2])
@@ -770,20 +852,69 @@ def _render_processing(call_id):
     st.caption(f"Call ID: `{call_id}` · Typically 1-3 minutes")
 
 
-def _render_transcript(segments, call_id):
-    st.markdown("#### Transcript")
+def _render_coaching_header(meta: dict):
+    """Render the coaching performance header with grade, arc, skills."""
+    grade = meta.get("rep_grade", "?")
+    assessment = meta.get("overall_assessment", "")
+    arc = meta.get("conversation_arc", "")
+    strongest = meta.get("strongest_skill", "")
+    growth = meta.get("biggest_growth_area", "")
+    n_coaching = meta.get("total_coaching_moments", 0)
+    n_signals = meta.get("total_signal_moments", 0)
+    n_wins = meta.get("total_wins", 0)
 
-    # Legend
+    grade_class = f"grade-{grade.lower()}" if grade else "grade-c"
+
     st.html(f"""
-    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px;font-size:12px;color:{TEXT_SECONDARY}">
-        <span><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:rgba(59,130,246,0.25);border-left:3px solid #3B82F6;margin-right:4px"></span> Rep</span>
-        <span><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:rgba(245,158,11,0.25);border-left:3px solid #F59E0B;margin-right:4px"></span> Buyer</span>
-        <span>💡 Coaching moment</span>
-        <span>⚡ Buyer signal</span>
+    <div class="coaching-header">
+        <div style="text-align:center">
+            <div class="grade-badge {grade_class}">{grade}</div>
+            <div style="font-size:10px;color:{TEXT_MUTED};margin-top:4px;font-weight:600">REP GRADE</div>
+        </div>
+        <div>
+            <div style="font-size:12px;color:{TEXT_SECONDARY};line-height:1.5">{assessment}</div>
+            {f'<div style="font-size:11px;color:{TEXT_MUTED};margin-top:4px;font-style:italic">{arc}</div>' if arc else ''}
+        </div>
+        <div>
+            <div style="font-size:11px;color:{TEXT_MUTED};font-weight:600;margin-bottom:4px">STRONGEST SKILL</div>
+            <div style="font-size:13px;color:{GREEN};font-weight:600">{strongest}</div>
+            <div style="font-size:11px;color:{TEXT_MUTED};font-weight:600;margin-top:8px">FOCUS AREA</div>
+            <div style="font-size:13px;color:{ORANGE};font-weight:600">{growth}</div>
+        </div>
+        <div style="display:flex;gap:12px;justify-content:center">
+            <div style="text-align:center">
+                <div style="font-size:20px;font-weight:800;color:{ACCENT}">{n_coaching}</div>
+                <div style="font-size:10px;color:{TEXT_MUTED}">Coaching</div>
+            </div>
+            <div style="text-align:center">
+                <div style="font-size:20px;font-weight:800;color:{YELLOW}">{n_signals}</div>
+                <div style="font-size:10px;color:{TEXT_MUTED}">Signals</div>
+            </div>
+            <div style="text-align:center">
+                <div style="font-size:20px;font-weight:800;color:{GREEN}">{n_wins}</div>
+                <div style="font-size:10px;color:{TEXT_MUTED}">Wins</div>
+            </div>
+        </div>
     </div>
     """)
 
-    search = st.text_input("🔍 Search", "", key="tsearch", placeholder="Search transcript...")
+
+def _render_transcript(segments, call_id):
+    st.markdown("#### Transcript")
+
+    # Enhanced legend
+    st.html(f"""
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px;font-size:11px;color:{TEXT_SECONDARY}">
+        <span><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:rgba(59,130,246,0.25);border-left:3px solid #3B82F6;margin-right:4px"></span> Rep</span>
+        <span><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:rgba(245,158,11,0.25);border-left:3px solid #F59E0B;margin-right:4px"></span> Buyer</span>
+        <span style="color:{ACCENT}">💡 Coaching</span>
+        <span style="color:{YELLOW}">⚡ Signal</span>
+        <span style="color:{GREEN}">🌟 Win</span>
+        <span style="color:{RED}">🔥 Turning Point</span>
+    </div>
+    """)
+
+    search = st.text_input("Search transcript", "", key="tsearch", placeholder="Search...")
 
     if not segments:
         st.info("Transcript segments not available.")
@@ -794,8 +925,14 @@ def _render_transcript(segments, call_id):
         filtered = [s for s in segments if search.lower() in s.get("text", "").lower()]
         st.caption(f"{len(filtered)} matches")
     else:
-        coached_count = sum(1 for s in segments if s.get("coaching"))
-        st.caption(f"{len(segments)} segments" + (f" · {coached_count} coaching moments" if coached_count else ""))
+        coached = sum(1 for s in segments if s.get("coaching"))
+        wins = sum(1 for s in segments if s.get("coaching", {}).get("type") == "win")
+        parts = [f"{len(segments)} segments"]
+        if coached:
+            parts.append(f"{coached} annotated")
+        if wins:
+            parts.append(f"{wins} wins")
+        st.caption(" · ".join(parts))
 
     for seg in filtered:
         role = seg.get("role", "unknown")
@@ -812,40 +949,189 @@ def _render_transcript(segments, call_id):
 
         role_class = "rep" if role == "rep" else "buyer" if role == "buyer" else "unknown"
 
-        # Coaching indicator
         if coaching:
-            c_type = coaching.get("type", "coaching")
-            icon = "💡" if c_type == "coaching" else "⚡"
-            sev = coaching.get("severity", "yellow")
-            sev_color_val = {"red": RED, "orange": ORANGE, "yellow": YELLOW}.get(sev, YELLOW)
-
-            st.html(f'''<div class="transcript-seg {role_class}" style="border-right:3px solid {sev_color_val}">
-                <span class="ts">[{m:02d}:{s:02d}]</span>
-                <span class="speaker">{spk}:</span> {text}
-                <span style="margin-left:6px;font-size:14px" title="Click to expand coaching">{icon}</span>
-            </div>''')
-
-            # Expandable coaching box
-            with st.expander(f"{icon} {'Coaching' if c_type == 'coaching' else 'Buyer Signal'} — [{m:02d}:{s:02d}]", expanded=False):
-                if c_type == "coaching":
-                    alt = coaching.get("what_to_say_instead", "")
-                    why = coaching.get("why", "")
-                    fw = coaching.get("framework_source", "")
-                    if alt:
-                        st.html(f'<div style="background:rgba(20,184,166,0.1);border:1px solid rgba(20,184,166,0.3);border-radius:8px;padding:10px 14px;margin-bottom:8px"><strong style="color:{ACCENT}">Instead, try:</strong><br><em style="color:{TEXT_PRIMARY};font-size:14px">"{alt}"</em></div>')
-                    if why:
-                        st.markdown(f"**Why:** {why}")
-                    if fw:
-                        st.caption(f"Source: {fw}")
-                else:
-                    signal = coaching.get("signal_detected", "")
-                    missed = coaching.get("missed_opportunity", "")
-                    if signal:
-                        st.markdown(f"**Signal:** {signal}")
-                    if missed:
-                        st.html(f'<div style="background:rgba(234,179,8,0.1);border:1px solid rgba(234,179,8,0.3);border-radius:8px;padding:10px 14px"><strong style="color:{YELLOW}">Missed opportunity:</strong><br>{missed}</div>')
+            _render_coached_segment(seg_idx, m, s, spk, text, role_class, coaching)
         else:
             st.html(f'<div class="transcript-seg {role_class}"><span class="ts">[{m:02d}:{s:02d}]</span><span class="speaker">{spk}:</span> {text}</div>')
+
+
+def _render_coached_segment(seg_idx, m, s, spk, text, role_class, coaching):
+    """Render a single segment with rich coaching annotation."""
+    c_type = coaching.get("type", "coaching")
+    sev = coaching.get("severity", "yellow")
+    momentum = coaching.get("momentum", "neutral")
+    category = coaching.get("coaching_category", "")
+    impact = coaching.get("deal_impact_score", 5)
+    impact_text = coaching.get("deal_impact_explanation", "")
+    fw = coaching.get("framework_source", "")
+
+    # Icons and colors per type
+    type_config = {
+        "coaching":      {"icon": "💡", "label": "COACHING",       "border_color": ACCENT},
+        "signal":        {"icon": "⚡", "label": "BUYER SIGNAL",   "border_color": YELLOW},
+        "win":           {"icon": "🌟", "label": "GREAT MOVE",     "border_color": GREEN},
+        "turning_point": {"icon": "🔥", "label": "TURNING POINT",  "border_color": RED},
+    }
+    tc = type_config.get(c_type, type_config["coaching"])
+    sev_color_val = {"red": RED, "orange": ORANGE, "yellow": YELLOW, "green": GREEN}.get(sev, YELLOW)
+
+    # Momentum arrow
+    mom_html = ""
+    if momentum == "gaining":
+        mom_html = f'<span class="momentum gaining">&#9650; Gaining</span>'
+    elif momentum == "losing":
+        mom_html = f'<span class="momentum losing">&#9660; Losing</span>'
+
+    # Category pill
+    cat_html = f'<span class="coach-cat {category}">{category.replace("_", " ")}</span>' if category else ""
+
+    # Turning point gets special wrapper
+    tp_class = " turning-point" if c_type == "turning_point" else ""
+
+    st.html(f'''<div class="transcript-seg {role_class}{tp_class}" style="border-right:3px solid {tc["border_color"]}">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+            <span><span class="ts">[{m:02d}:{s:02d}]</span> <span class="speaker">{spk}:</span> {text}</span>
+            <span style="display:flex;align-items:center;gap:6px;white-space:nowrap">
+                {mom_html}
+                <span style="font-size:14px">{tc["icon"]}</span>
+            </span>
+        </div>
+    </div>''')
+
+    # Expandable coaching card
+    with st.expander(f'{tc["icon"]} {tc["label"]} — [{m:02d}:{s:02d}]', expanded=False):
+        # Header: category + impact + source
+        header_parts = []
+        if cat_html:
+            header_parts.append(cat_html)
+        if fw:
+            header_parts.append(f'<span style="font-size:10px;color:{TEXT_MUTED}">via {fw}</span>')
+        if header_parts:
+            st.html(f'<div style="margin-bottom:8px">{"".join(header_parts)}</div>')
+
+        # Deal impact bar
+        if impact > 0:
+            impact_color = GREEN if impact <= 3 else (YELLOW if impact <= 5 else (ORANGE if impact <= 7 else RED))
+            pct = impact * 10
+            st.html(f'''<div class="impact-bar">
+                <span style="font-size:10px;font-weight:700;color:{TEXT_MUTED};width:70px">DEAL IMPACT</span>
+                <div class="bar"><div class="fill" style="width:{pct}%;background:{impact_color}"></div></div>
+                <span style="font-size:13px;font-weight:800;color:{impact_color}">{impact}/10</span>
+            </div>''')
+            if impact_text:
+                st.html(f'<div style="font-size:11px;color:{TEXT_SECONDARY};margin-bottom:8px;font-style:italic">{_esc(impact_text)}</div>')
+
+        # ── Type-specific content ──
+        if c_type in ("coaching", "turning_point"):
+            _render_coaching_content(coaching)
+        elif c_type == "signal":
+            _render_signal_content(coaching)
+        elif c_type == "win":
+            _render_win_content(coaching)
+
+        # Related segments
+        related = coaching.get("related_segments") or []
+        if related:
+            links = ", ".join(f"seg {r}" for r in related)
+            st.caption(f"Connected to: {links}")
+
+
+def _render_coaching_content(coaching):
+    """Render coaching/turning_point annotation content."""
+    alt = coaching.get("what_to_say_instead", "")
+    why = coaching.get("why", "")
+    exchange = coaching.get("alternative_exchange") or []
+
+    # "Instead, try" box
+    if alt:
+        st.html(f'''<div style="background:rgba(20,184,166,0.1);border:1px solid rgba(20,184,166,0.3);
+            border-radius:8px;padding:12px 16px;margin-bottom:8px">
+            <div style="font-size:10px;font-weight:700;color:{ACCENT};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Instead, try</div>
+            <div style="color:{TEXT_PRIMARY};font-size:14px;font-style:italic;line-height:1.5">"{_esc(alt)}"</div>
+        </div>''')
+
+    # Why
+    if why:
+        st.markdown(f"**Why:** {why}")
+
+    # Alternative exchange — mini script
+    if exchange:
+        turns_html = ""
+        for turn in exchange:
+            speaker = turn.get("speaker", "")
+            turn_text = turn.get("text", "")
+            role_cls = "rep-role" if speaker.lower() == "rep" else "buyer-role"
+            turns_html += f'''<div class="alt-turn">
+                <span class="role {role_cls}">{speaker}</span>
+                <span class="text">"{_esc(turn_text)}"</span>
+            </div>'''
+        st.html(f'''<div class="alt-exchange">
+            <div style="font-size:10px;font-weight:700;color:{ACCENT};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">How it should have gone</div>
+            {turns_html}
+        </div>''')
+
+
+def _render_signal_content(coaching):
+    """Render buyer signal annotation content."""
+    signal = coaching.get("signal_detected", "")
+    missed = coaching.get("missed_opportunity", "")
+    buyer_thinking = coaching.get("buyer_thinking", "")
+    exchange = coaching.get("alternative_exchange") or []
+
+    # Signal detected
+    if signal:
+        st.html(f'''<div style="background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.25);
+            border-radius:8px;padding:10px 14px;margin-bottom:8px">
+            <div style="font-size:10px;font-weight:700;color:{YELLOW};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Signal Detected</div>
+            <div style="font-size:13px;color:{TEXT_PRIMARY};line-height:1.5">{_esc(signal)}</div>
+        </div>''')
+
+    # Buyer psychology decoder
+    if buyer_thinking:
+        st.html(f'''<div class="buyer-think">
+            <div class="label">What the buyer was actually thinking</div>
+            <div style="color:{TEXT_PRIMARY};font-size:13px;line-height:1.5;font-style:italic">"{_esc(buyer_thinking)}"</div>
+        </div>''')
+
+    # Missed opportunity
+    if missed:
+        st.markdown(f"**Missed opportunity:** {missed}")
+
+    # Alternative exchange
+    if exchange:
+        turns_html = ""
+        for turn in exchange:
+            speaker = turn.get("speaker", "")
+            turn_text = turn.get("text", "")
+            role_cls = "rep-role" if speaker.lower() == "rep" else "buyer-role"
+            turns_html += f'''<div class="alt-turn">
+                <span class="role {role_cls}">{speaker}</span>
+                <span class="text">"{_esc(turn_text)}"</span>
+            </div>'''
+        st.html(f'''<div class="alt-exchange">
+            <div style="font-size:10px;font-weight:700;color:{YELLOW};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">What should have happened next</div>
+            {turns_html}
+        </div>''')
+
+
+def _render_win_content(coaching):
+    """Render win celebration annotation content."""
+    great = coaching.get("what_was_great", "")
+    why_worked = coaching.get("why_it_worked", "")
+
+    if great:
+        st.html(f'''<div style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);
+            border-radius:8px;padding:12px 16px;margin-bottom:8px">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                <span class="win-badge">GREAT MOVE</span>
+            </div>
+            <div style="color:{TEXT_PRIMARY};font-size:13px;line-height:1.5">{_esc(great)}</div>
+        </div>''')
+
+    if why_worked:
+        st.html(f'''<div style="font-size:12px;color:{TEXT_SECONDARY};line-height:1.5;margin-top:4px">
+            <strong style="color:{GREEN}">Why it worked:</strong> {_esc(why_worked)}
+        </div>''')
 
 
 def _render_insights(insights):
