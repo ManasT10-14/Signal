@@ -196,6 +196,7 @@ class AnalysisRun(Base):
     run_number = Column(Integer, nullable=False)  # 1, 2, 3...
     settings_snapshot = Column(JSONB, default=dict)  # exact config used
     summary = Column(JSONB, default=dict)  # rich summary from summary_node
+    segment_coaching = Column(JSONB, nullable=True)  # per-segment coaching annotations
     status = Column(String(20), default="processing")  # processing|complete|failed|partial
     started_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)

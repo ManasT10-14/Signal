@@ -775,9 +775,11 @@ def _render_transcript(segments, call_id):
 
     # Legend
     st.html(f"""
-    <div style="display:flex;gap:16px;margin-bottom:8px;font-size:12px;color:{TEXT_SECONDARY}">
-        <span><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:rgba(59,130,246,0.25);border-left:3px solid #3B82F6;margin-right:4px"></span> Rep (Sales)</span>
-        <span><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:rgba(245,158,11,0.25);border-left:3px solid #F59E0B;margin-right:4px"></span> Buyer (Customer)</span>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px;font-size:12px;color:{TEXT_SECONDARY}">
+        <span><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:rgba(59,130,246,0.25);border-left:3px solid #3B82F6;margin-right:4px"></span> Rep</span>
+        <span><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:rgba(245,158,11,0.25);border-left:3px solid #F59E0B;margin-right:4px"></span> Buyer</span>
+        <span>💡 Coaching moment</span>
+        <span>⚡ Buyer signal</span>
     </div>
     """)
 
@@ -792,7 +794,8 @@ def _render_transcript(segments, call_id):
         filtered = [s for s in segments if search.lower() in s.get("text", "").lower()]
         st.caption(f"{len(filtered)} matches")
     else:
-        st.caption(f"{len(segments)} segments")
+        coached_count = sum(1 for s in segments if s.get("coaching"))
+        st.caption(f"{len(segments)} segments" + (f" · {coached_count} coaching moments" if coached_count else ""))
 
     for seg in filtered:
         role = seg.get("role", "unknown")
@@ -800,13 +803,49 @@ def _render_transcript(segments, call_id):
         m, s = divmod(start_ms // 1000, 60)
         spk = seg.get("speaker", "?")
         text = seg.get("text", "")
+        coaching = seg.get("coaching")
+        seg_idx = seg.get("index", 0)
 
         if search and search.lower() in text.lower():
             import re
             text = re.sub(f"({re.escape(search)})", r'<mark style="background:#5C4E1E;color:#FDE047;padding:1px 2px;border-radius:2px">\1</mark>', text, flags=re.IGNORECASE)
 
         role_class = "rep" if role == "rep" else "buyer" if role == "buyer" else "unknown"
-        st.html(f'<div class="transcript-seg {role_class}"><span class="ts">[{m:02d}:{s:02d}]</span><span class="speaker">{spk}:</span> {text}</div>')
+
+        # Coaching indicator
+        if coaching:
+            c_type = coaching.get("type", "coaching")
+            icon = "💡" if c_type == "coaching" else "⚡"
+            sev = coaching.get("severity", "yellow")
+            sev_color_val = {"red": RED, "orange": ORANGE, "yellow": YELLOW}.get(sev, YELLOW)
+
+            st.html(f'''<div class="transcript-seg {role_class}" style="border-right:3px solid {sev_color_val}">
+                <span class="ts">[{m:02d}:{s:02d}]</span>
+                <span class="speaker">{spk}:</span> {text}
+                <span style="margin-left:6px;font-size:14px" title="Click to expand coaching">{icon}</span>
+            </div>''')
+
+            # Expandable coaching box
+            with st.expander(f"{icon} {'Coaching' if c_type == 'coaching' else 'Buyer Signal'} — [{m:02d}:{s:02d}]", expanded=False):
+                if c_type == "coaching":
+                    alt = coaching.get("what_to_say_instead", "")
+                    why = coaching.get("why", "")
+                    fw = coaching.get("framework_source", "")
+                    if alt:
+                        st.html(f'<div style="background:rgba(20,184,166,0.1);border:1px solid rgba(20,184,166,0.3);border-radius:8px;padding:10px 14px;margin-bottom:8px"><strong style="color:{ACCENT}">Instead, try:</strong><br><em style="color:{TEXT_PRIMARY};font-size:14px">"{alt}"</em></div>')
+                    if why:
+                        st.markdown(f"**Why:** {why}")
+                    if fw:
+                        st.caption(f"Source: {fw}")
+                else:
+                    signal = coaching.get("signal_detected", "")
+                    missed = coaching.get("missed_opportunity", "")
+                    if signal:
+                        st.markdown(f"**Signal:** {signal}")
+                    if missed:
+                        st.html(f'<div style="background:rgba(234,179,8,0.1);border:1px solid rgba(234,179,8,0.3);border-radius:8px;padding:10px 14px"><strong style="color:{YELLOW}">Missed opportunity:</strong><br>{missed}</div>')
+        else:
+            st.html(f'<div class="transcript-seg {role_class}"><span class="ts">[{m:02d}:{s:02d}]</span><span class="speaker">{spk}:</span> {text}</div>')
 
 
 def _render_insights(insights):

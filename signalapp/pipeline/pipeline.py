@@ -38,6 +38,7 @@ def create_pipeline_workflow():
     from signalapp.pipeline.nodes.execute_groups import execute_groups_node
     from signalapp.pipeline.nodes.verify import verify_node
     from signalapp.pipeline.nodes.insights import generate_insights_node
+    from signalapp.pipeline.nodes.segment_coaching import segment_coaching_node
     from signalapp.pipeline.nodes.summary import generate_summary_node
     from signalapp.pipeline.nodes.store import store_results_node
 
@@ -51,6 +52,7 @@ def create_pipeline_workflow():
     builder.add_node("execute_groups", execute_groups_node)
     builder.add_node("verify_results", verify_node)
     builder.add_node("generate_insights", generate_insights_node)
+    builder.add_node("segment_coaching", segment_coaching_node)
     builder.add_node("generate_summary", generate_summary_node)
     builder.add_node("store_results", store_results_node)
 
@@ -61,7 +63,8 @@ def create_pipeline_workflow():
     builder.add_edge("route_frameworks", "execute_groups")
     builder.add_edge("execute_groups", "verify_results")
     builder.add_edge("verify_results", "generate_insights")
-    builder.add_edge("generate_insights", "generate_summary")
+    builder.add_edge("generate_insights", "segment_coaching")
+    builder.add_edge("segment_coaching", "generate_summary")
     builder.add_edge("generate_summary", "store_results")
     builder.add_edge("store_results", END)
 

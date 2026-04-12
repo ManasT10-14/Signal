@@ -43,6 +43,9 @@ class PipelineState(TypedDict, total=False):
     # Summary
     summary: dict | None
 
+    # Segment-level coaching
+    segment_coaching: dict | None
+
     # Errors
     errors: list[str]
 

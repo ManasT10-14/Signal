@@ -46,6 +46,7 @@ class TranscriptSegmentResponse(BaseModel):
     start_ms: int
     end_ms: int
     text: str
+    coaching: dict | None = None  # Per-segment coaching annotation (if available)
 
 
 class UploadResponse(BaseModel):
@@ -160,6 +161,16 @@ async def get_call_transcript(
     if not call.transcript or not call.transcript.segments:
         return []
 
+    # Get segment coaching from latest analysis run
+    coaching_by_index = {}
+    if call.analysis_runs:
+        latest_run = sorted(call.analysis_runs, key=lambda r: r.run_number, reverse=True)[0]
+        if latest_run.segment_coaching and latest_run.segment_coaching.get("annotations"):
+            for ann in latest_run.segment_coaching["annotations"]:
+                idx = ann.get("segment_index")
+                if idx is not None:
+                    coaching_by_index[idx] = ann
+
     return sorted([
         {
             "segment_id": str(seg.id),
@@ -169,6 +180,7 @@ async def get_call_transcript(
             "start_ms": seg.start_time_ms,
             "end_ms": seg.end_time_ms,
             "text": seg.text_content,
+            "coaching": coaching_by_index.get(seg.segment_index),
         }
         for seg in call.transcript.segments
     ], key=lambda s: s["start_ms"])

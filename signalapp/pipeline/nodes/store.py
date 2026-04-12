@@ -58,11 +58,14 @@ async def store_results_node(state: PipelineState) -> dict:
             if base_metrics:
                 settings_snapshot["base_metrics"] = base_metrics
 
+            segment_coaching_data = state.get("segment_coaching")
+
             run = AnalysisRun(
                 call_id=call_id,
                 run_number=run_count + 1,
                 settings_snapshot=settings_snapshot,
                 summary=summary,
+                segment_coaching=segment_coaching_data,
             )
             session.add(run)
             await session.flush()

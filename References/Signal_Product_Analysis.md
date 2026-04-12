@@ -113,8 +113,3 @@ The analysis is accurate and actionable across all three call types.
 - Confidence scores (84-98%) accurately reflect analysis quality
 - The negotiation analysis identified every key dynamic: competitor neutralized, zero concessions, self-generated commitment, price reframed as investment
 
-**What needs improvement:**
-- SQLite on Railway cannot handle concurrent pipeline writes — production deployment needs Postgres
-- Evidence items lack segment_id references, preventing click-to-scroll transcript linking
-- Check-in calls produce thin analysis (by design, but a dedicated customer health framework could add value)
-- The discovery call's commitment was correctly flagged as passive, but the system could be more explicit about what a strong discovery commitment looks like ("Schedule the demo for Tuesday at 2pm with your 4 team leads" vs "Send it over")
