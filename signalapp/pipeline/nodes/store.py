@@ -179,11 +179,11 @@ async def store_results_node(state: PipelineState) -> dict:
 
     except Exception as e:
         logger.error(f"[store] Failed for call {call_id_str}: {e}", exc_info=True)
-        # Still try to mark call as ready so UI doesn't hang
+        # Mark call as failed so the UI shows an error (not a false "ready")
         try:
             from signalapp.db.repository import CallRepository
             cr = CallRepository()
-            await cr.update_status(uuid.UUID(call_id_str) if isinstance(call_id_str, str) else call_id_str, "ready")
+            await cr.update_status(uuid.UUID(call_id_str) if isinstance(call_id_str, str) else call_id_str, "failed")
         except Exception:
             pass
         return {

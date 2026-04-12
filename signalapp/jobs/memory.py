@@ -67,6 +67,11 @@ class MemoryQueue:
         self._running = False
         self._registry: dict[str, Callable] = {}
         self._loop: asyncio.AbstractEventLoop | None = None
+        # Serialize pipeline jobs to prevent SQLite concurrent write issues.
+        # Jobs queue up and run one-at-a-time. This is safe because each
+        # pipeline job is internally async (LLM calls use await), so the
+        # event loop stays responsive while a job is running.
+        self._pipeline_lock = asyncio.Lock()
 
     def job(self, func: Callable[..., Awaitable]) -> Callable:
         """Decorator to register a job function."""
@@ -103,49 +108,58 @@ class MemoryQueue:
         return job_id
 
     async def _process_job(self, job_id: str) -> None:
-        """Process a single job."""
-        job = self._jobs.get(job_id)
-        if not job:
-            return
+        """
+        Process a single job.
 
-        job.status = JobStatus.RUNNING
+        Uses _pipeline_lock to serialize jobs, preventing SQLite concurrent
+        write errors. Jobs still enqueue instantly — they just execute
+        one-at-a-time. Each job is internally async so the event loop
+        stays responsive while waiting for LLM calls.
+        """
+        async with self._pipeline_lock:
+            job = self._jobs.get(job_id)
+            if not job:
+                return
 
-        func = self._registry.get(job.function_name)
-        if func is None:
-            job.status = JobStatus.FAILED
-            job.error = f"Unknown function: {job.function_name}"
-            logger.error(f"[memory_queue] {job_id}: {job.error}")
-            return
+            job.status = JobStatus.RUNNING
+            logger.info(f"[memory_queue] {job_id}: acquired lock, starting execution")
 
-        try:
-            # Prepare a fake ARQ ctx dict
-            ctx = {"job_id": job_id, "redis": None}
+            func = self._registry.get(job.function_name)
+            if func is None:
+                job.status = JobStatus.FAILED
+                job.error = f"Unknown function: {job.function_name}"
+                logger.error(f"[memory_queue] {job_id}: {job.error}")
+                return
 
-            if inspect.iscoroutinefunction(func):
-                result = await func(ctx, *job.args, **job.kwargs)
-            else:
-                result = func(ctx, *job.args, **job.kwargs)
-
-            job.result = result
-            job.status = JobStatus.COMPLETE
-            job.completed_at = datetime.utcnow()
-            logger.info(f"[memory_queue] {job_id}: completed")
-            # Remove from pending deque
             try:
-                self._pending.remove(job_id)
-            except ValueError:
-                pass
+                # Prepare a fake ARQ ctx dict
+                ctx = {"job_id": job_id, "redis": None}
 
-        except Exception as e:
-            job.status = JobStatus.FAILED
-            job.error = str(e)
-            job.completed_at = datetime.utcnow()
-            logger.exception(f"[memory_queue] {job_id}: failed: {e}")
-            # Remove from pending deque on failure too
-            try:
-                self._pending.remove(job_id)
-            except ValueError:
-                pass
+                if inspect.iscoroutinefunction(func):
+                    result = await func(ctx, *job.args, **job.kwargs)
+                else:
+                    result = func(ctx, *job.args, **job.kwargs)
+
+                job.result = result
+                job.status = JobStatus.COMPLETE
+                job.completed_at = datetime.utcnow()
+                logger.info(f"[memory_queue] {job_id}: completed, releasing lock")
+                # Remove from pending deque
+                try:
+                    self._pending.remove(job_id)
+                except ValueError:
+                    pass
+
+            except Exception as e:
+                job.status = JobStatus.FAILED
+                job.error = str(e)
+                job.completed_at = datetime.utcnow()
+                logger.exception(f"[memory_queue] {job_id}: failed: {e}")
+                # Remove from pending deque on failure too
+                try:
+                    self._pending.remove(job_id)
+                except ValueError:
+                    pass
 
     async def get_job_result(self, job_id: str) -> MemoryJob | None:
         """Get the result of a job (for testing / polling)."""

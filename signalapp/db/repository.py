@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import AsyncIterator
 
-from sqlalchemy import select, update, func
+from sqlalchemy import select, update, func, text as import_text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import selectinload
@@ -65,6 +65,14 @@ async def init_db(database_url: str | None = None) -> None:
     # Create all tables
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    # Enable WAL mode for SQLite — dramatically improves concurrent access
+    if _is_sqlite(url):
+        async with engine.begin() as conn:
+            await conn.execute(import_text("PRAGMA journal_mode=WAL"))
+            await conn.execute(import_text("PRAGMA busy_timeout=10000"))  # 10s retry on lock
+        import logging
+        logging.getLogger(__name__).info("[db] SQLite WAL mode enabled with 10s busy_timeout")
 
 
 async def get_session() -> AsyncIterator[AsyncSession]:
