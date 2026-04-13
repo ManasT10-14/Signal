@@ -541,38 +541,26 @@ def page_dashboard():
     dash = fetch_dashboard_summary()
     avg_conf = f"{dash.get('avg_confidence', 0) * 100:.0f}%" if dash.get("avg_confidence") else "—"
     top_theme = dash.get("top_coaching_theme", "—") or "—"
-    if len(top_theme) > 25:
-        top_theme = top_theme[:23] + "..."
-
     from datetime import timedelta
     week_ago = (datetime.utcnow() - timedelta(days=7)).isoformat()
     calls_this_week = sum(1 for c in calls if (c.get("created_at") or "") >= week_ago)
 
-    # ── Stat Cards Row ──
-    st.html(f"""
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px" class="stat-grid">
-        <div style="background:{BG_CARD};border:1px solid {BORDER};border-radius:12px;padding:20px">
-            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:{TEXT_MUTED};margin-bottom:8px">Total Calls</div>
-            <div style="font-size:32px;font-weight:800;color:{TEXT_PRIMARY};line-height:1">{len(calls)}</div>
-            <div style="font-size:12px;color:{TEXT_MUTED};margin-top:4px">{len(ready_calls)} analyzed · {len(processing_calls)} processing</div>
-        </div>
-        <div style="background:{BG_CARD};border:1px solid {BORDER};border-radius:12px;padding:20px">
-            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:{TEXT_MUTED};margin-bottom:8px">This Week</div>
-            <div style="font-size:32px;font-weight:800;color:{ACCENT};line-height:1">{calls_this_week}</div>
-            <div style="font-size:12px;color:{TEXT_MUTED};margin-top:4px">calls submitted</div>
-        </div>
-        <div style="background:{BG_CARD};border:1px solid {BORDER};border-radius:12px;padding:20px">
-            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:{TEXT_MUTED};margin-bottom:8px">Avg Confidence</div>
-            <div style="font-size:32px;font-weight:800;color:{ACCENT};line-height:1">{avg_conf}</div>
-            <div style="font-size:12px;color:{TEXT_MUTED};margin-top:4px">across all insights</div>
-        </div>
-        <div style="background:{BG_CARD};border:1px solid {BORDER};border-radius:12px;padding:20px">
-            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:{TEXT_MUTED};margin-bottom:8px">Top Coaching Theme</div>
-            <div style="font-size:16px;font-weight:700;color:{ORANGE};line-height:1.2;margin-top:4px">{top_theme}</div>
-            <div style="font-size:12px;color:{TEXT_MUTED};margin-top:4px">most frequent issue</div>
-        </div>
-    </div>
-    """)
+    # ── Stat Cards Row (Streamlit columns auto-stack on mobile) ──
+    _stat_card = lambda label, val, sub, color=TEXT_PRIMARY: f'''<div class="stat-card">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:{TEXT_MUTED};margin-bottom:8px">{label}</div>
+        <div style="font-size:28px;font-weight:800;color:{color};line-height:1">{val}</div>
+        <div style="font-size:12px;color:{TEXT_MUTED};margin-top:4px">{sub}</div>
+    </div>'''
+
+    sc1, sc2, sc3, sc4 = st.columns(4)
+    with sc1:
+        st.html(_stat_card("Total Calls", len(calls), f"{len(ready_calls)} analyzed · {len(processing_calls)} processing"))
+    with sc2:
+        st.html(_stat_card("This Week", calls_this_week, "calls submitted", ACCENT))
+    with sc3:
+        st.html(_stat_card("Avg Confidence", avg_conf, "across all insights", ACCENT))
+    with sc4:
+        st.html(_stat_card("Top Coaching Theme", f'<span style="font-size:14px">{_esc(top_theme)}</span>', "most frequent issue", ORANGE))
 
     # ── Two-column layout: Attention + Rep Overview ──
     col_left, col_right = st.columns([3, 2])
@@ -935,7 +923,7 @@ def _render_processing(call_id):
 
 
 def _render_coaching_header(meta: dict):
-    """Render the coaching performance header with grade, arc, skills."""
+    """Render the coaching performance header — responsive via Streamlit columns."""
     grade = meta.get("rep_grade", "?")
     assessment = meta.get("overall_assessment", "")
     arc = meta.get("conversation_arc", "")
@@ -947,38 +935,29 @@ def _render_coaching_header(meta: dict):
 
     grade_class = f"grade-{grade.lower()}" if grade else "grade-c"
 
-    st.html(f"""
-    <div class="coaching-header">
-        <div style="text-align:center;min-width:56px">
+    # Row 1: Grade badge + assessment + stats (Streamlit columns handle responsive)
+    c1, c2, c3 = st.columns([1, 4, 2])
+    with c1:
+        st.html(f'''<div style="text-align:center;padding:4px 0">
             <div class="grade-badge {grade_class}">{grade}</div>
-            <div style="font-size:10px;color:{TEXT_MUTED};margin-top:4px;font-weight:600">REP GRADE</div>
-        </div>
-        <div style="min-width:0">
-            <div style="font-size:12px;color:{TEXT_SECONDARY};line-height:1.5">{_esc(assessment)}</div>
-            {f'<div style="font-size:11px;color:{TEXT_MUTED};margin-top:4px;font-style:italic">{_esc(arc)}</div>' if arc else ''}
-        </div>
-        <div>
-            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px">
-                <div><div style="font-size:10px;color:{TEXT_MUTED};font-weight:600">STRONGEST</div><div style="font-size:12px;color:{GREEN};font-weight:600">{_esc(strongest)}</div></div>
-                <div><div style="font-size:10px;color:{TEXT_MUTED};font-weight:600">FOCUS AREA</div><div style="font-size:12px;color:{ORANGE};font-weight:600">{_esc(growth)}</div></div>
-            </div>
-        </div>
-        <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
-            <div style="text-align:center">
-                <div style="font-size:20px;font-weight:800;color:{ACCENT}">{n_coaching}</div>
-                <div style="font-size:10px;color:{TEXT_MUTED}">Coaching</div>
-            </div>
-            <div style="text-align:center">
-                <div style="font-size:20px;font-weight:800;color:{YELLOW}">{n_signals}</div>
-                <div style="font-size:10px;color:{TEXT_MUTED}">Signals</div>
-            </div>
-            <div style="text-align:center">
-                <div style="font-size:20px;font-weight:800;color:{GREEN}">{n_wins}</div>
-                <div style="font-size:10px;color:{TEXT_MUTED}">Wins</div>
-            </div>
-        </div>
-    </div>
-    """)
+            <div style="font-size:10px;color:{TEXT_MUTED};margin-top:4px;font-weight:600">GRADE</div>
+        </div>''')
+    with c2:
+        st.html(f'''<div style="font-size:12px;color:{TEXT_SECONDARY};line-height:1.5">{_esc(assessment)}</div>''')
+        if arc:
+            st.html(f'''<div style="font-size:11px;color:{TEXT_MUTED};font-style:italic;margin-top:2px">{_esc(arc)}</div>''')
+    with c3:
+        st.html(f'''<div style="display:flex;gap:14px;justify-content:center;padding:4px 0">
+            <div style="text-align:center"><div style="font-size:20px;font-weight:800;color:{ACCENT}">{n_coaching}</div><div style="font-size:9px;color:{TEXT_MUTED}">Coach</div></div>
+            <div style="text-align:center"><div style="font-size:20px;font-weight:800;color:{YELLOW}">{n_signals}</div><div style="font-size:9px;color:{TEXT_MUTED}">Signal</div></div>
+            <div style="text-align:center"><div style="font-size:20px;font-weight:800;color:{GREEN}">{n_wins}</div><div style="font-size:9px;color:{TEXT_MUTED}">Win</div></div>
+        </div>''')
+
+    # Row 2: Skills (compact)
+    st.html(f'''<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;padding:0 4px">
+        <div><span style="font-size:10px;color:{TEXT_MUTED};font-weight:600">STRONGEST: </span><span style="font-size:12px;color:{GREEN};font-weight:600">{_esc(strongest)}</span></div>
+        <div><span style="font-size:10px;color:{TEXT_MUTED};font-weight:600">FOCUS: </span><span style="font-size:12px;color:{ORANGE};font-weight:600">{_esc(growth)}</span></div>
+    </div>''')
 
 
 def _render_transcript(segments, call_id):
