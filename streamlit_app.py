@@ -332,6 +332,76 @@ hr {{ border-color: {BORDER} !important; }}
 .coaching-header {{ display: grid; grid-template-columns: auto 1fr 1fr 1fr; gap: 16px;
     background: {BG_CARD}; border: 1px solid {BORDER}; border-radius: 12px;
     padding: 16px 20px; margin-bottom: 16px; align-items: center; }}
+
+/* ── Mobile Responsive ── */
+@media (max-width: 768px) {{
+    /* Coaching header: stack vertically on mobile */
+    .coaching-header {{
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+        padding: 14px 16px !important;
+        text-align: center;
+    }}
+    .coaching-header > div:first-child {{
+        display: flex; align-items: center; gap: 12px; justify-content: center;
+    }}
+
+    /* Grade badge smaller on mobile */
+    .grade-badge {{ width: 40px !important; height: 40px !important; font-size: 20px !important; border-radius: 10px !important; }}
+
+    /* Transcript segments: smaller text, tighter padding */
+    .transcript-seg {{ padding: 6px 10px !important; font-size: 12px !important; line-height: 1.5 !important; }}
+    .transcript-seg .ts {{ font-size: 10px !important; margin-right: 4px !important; }}
+    .transcript-seg .speaker {{ font-size: 12px !important; margin-right: 4px !important; }}
+
+    /* Coaching category pills: smaller */
+    .coach-cat {{ font-size: 9px !important; padding: 1px 6px !important; }}
+
+    /* Alternative exchange: tighter */
+    .alt-exchange {{ padding: 8px 12px !important; }}
+    .alt-turn .role {{ font-size: 9px !important; padding: 1px 4px !important; }}
+    .alt-turn .text {{ font-size: 12px !important; }}
+
+    /* Buyer thinking callout: tighter */
+    .buyer-think {{ padding: 8px 10px !important; }}
+
+    /* Deal impact bar: stack label */
+    .impact-bar {{ flex-wrap: wrap !important; }}
+
+    /* Turning point badge: adjust position */
+    .turning-point::before {{ font-size: 8px !important; right: 4px !important; top: -8px !important; padding: 1px 6px !important; }}
+
+    /* Evidence quote: tighter */
+    .evidence-quote {{ font-size: 11px !important; padding: 4px 8px !important; }}
+
+    /* Stat cards: word wrap */
+    .stat-card {{ padding: 12px 14px !important; }}
+    .stat-card div:first-child {{ font-size: 16px !important; }}
+
+    /* Insight cards: tighter */
+    .insight-card {{ padding: 12px 14px !important; }}
+
+    /* Coaching box: tighter */
+    .coaching-box {{ padding: 10px 12px !important; font-size: 12px !important; }}
+
+    /* Win badge: smaller */
+    .win-badge {{ font-size: 10px !important; padding: 1px 6px !important; }}
+
+    /* Dashboard stat cards: 2x2 grid */
+    .stat-grid {{ grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }}
+    .stat-grid > div {{ padding: 14px !important; }}
+    .stat-grid > div > div:nth-child(2) {{ font-size: 24px !important; }}
+}}
+
+@media (max-width: 480px) {{
+    /* Extra small screens */
+    .coaching-header {{ padding: 10px 12px !important; gap: 10px !important; }}
+    .grade-badge {{ width: 36px !important; height: 36px !important; font-size: 18px !important; }}
+    .transcript-seg {{ font-size: 11px !important; padding: 5px 8px !important; }}
+    .alt-exchange {{ padding: 6px 8px !important; margin: 4px 0 !important; }}
+    .alt-turn {{ gap: 6px !important; }}
+    .alt-turn .text {{ font-size: 11px !important; }}
+}}
 </style>
 """)
 
@@ -480,7 +550,7 @@ def page_dashboard():
 
     # ── Stat Cards Row ──
     st.html(f"""
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px" class="stat-grid">
         <div style="background:{BG_CARD};border:1px solid {BORDER};border-radius:12px;padding:20px">
             <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:{TEXT_MUTED};margin-bottom:8px">Total Calls</div>
             <div style="font-size:32px;font-weight:800;color:{TEXT_PRIMARY};line-height:1">{len(calls)}</div>
@@ -614,7 +684,7 @@ def page_dashboard():
         status_label = status.upper()
 
         st.html(f"""
-        <div style="display:grid;grid-template-columns:1fr 100px 80px 80px;gap:12px;align-items:center;padding:10px 14px;border-radius:8px;margin-bottom:2px;border-bottom:1px solid {BORDER}" onmouseover="this.style.background='{BG_ELEVATED}'" onmouseout="this.style.background='transparent'">
+        <div class="call-row" style="display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:10px 14px;border-radius:8px;margin-bottom:2px;border-bottom:1px solid {BORDER}" onmouseover="this.style.background='{BG_ELEVATED}'" onmouseout="this.style.background='transparent'">
             <div>
                 <div style="font-size:13px;font-weight:600;color:{TEXT_PRIMARY}">{deal}</div>
                 <div style="font-size:11px;color:{TEXT_MUTED}">{c.get('rep_name', '')} · {ct}</div>
@@ -622,8 +692,7 @@ def page_dashboard():
             <div style="text-align:center">
                 <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:{status_color}22;color:{status_color}">{status_label}</span>
             </div>
-            <div style="font-size:12px;color:{TEXT_MUTED};text-align:center">{d if d else '—'}</div>
-            <div style="text-align:right"></div>
+            <div style="font-size:12px;color:{TEXT_MUTED};text-align:right;white-space:nowrap">{d if d else '—'}</div>
         </div>
         """)
 
@@ -880,21 +949,21 @@ def _render_coaching_header(meta: dict):
 
     st.html(f"""
     <div class="coaching-header">
-        <div style="text-align:center">
+        <div style="text-align:center;min-width:56px">
             <div class="grade-badge {grade_class}">{grade}</div>
             <div style="font-size:10px;color:{TEXT_MUTED};margin-top:4px;font-weight:600">REP GRADE</div>
         </div>
-        <div>
-            <div style="font-size:12px;color:{TEXT_SECONDARY};line-height:1.5">{assessment}</div>
-            {f'<div style="font-size:11px;color:{TEXT_MUTED};margin-top:4px;font-style:italic">{arc}</div>' if arc else ''}
+        <div style="min-width:0">
+            <div style="font-size:12px;color:{TEXT_SECONDARY};line-height:1.5">{_esc(assessment)}</div>
+            {f'<div style="font-size:11px;color:{TEXT_MUTED};margin-top:4px;font-style:italic">{_esc(arc)}</div>' if arc else ''}
         </div>
         <div>
-            <div style="font-size:11px;color:{TEXT_MUTED};font-weight:600;margin-bottom:4px">STRONGEST SKILL</div>
-            <div style="font-size:13px;color:{GREEN};font-weight:600">{strongest}</div>
-            <div style="font-size:11px;color:{TEXT_MUTED};font-weight:600;margin-top:8px">FOCUS AREA</div>
-            <div style="font-size:13px;color:{ORANGE};font-weight:600">{growth}</div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px">
+                <div><div style="font-size:10px;color:{TEXT_MUTED};font-weight:600">STRONGEST</div><div style="font-size:12px;color:{GREEN};font-weight:600">{_esc(strongest)}</div></div>
+                <div><div style="font-size:10px;color:{TEXT_MUTED};font-weight:600">FOCUS AREA</div><div style="font-size:12px;color:{ORANGE};font-weight:600">{_esc(growth)}</div></div>
+            </div>
         </div>
-        <div style="display:flex;gap:12px;justify-content:center">
+        <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
             <div style="text-align:center">
                 <div style="font-size:20px;font-weight:800;color:{ACCENT}">{n_coaching}</div>
                 <div style="font-size:10px;color:{TEXT_MUTED}">Coaching</div>
@@ -1002,13 +1071,11 @@ def _render_coached_segment(seg_idx, m, s, spk, text, role_class, coaching):
     tp_class = " turning-point" if c_type == "turning_point" else ""
 
     st.html(f'''<div class="transcript-seg {role_class}{tp_class}" style="border-right:3px solid {tc["border_color"]}">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-            <span><span class="ts">[{m:02d}:{s:02d}]</span> <span class="speaker">{spk}:</span> {text}</span>
-            <span style="display:flex;align-items:center;gap:6px;white-space:nowrap">
-                {mom_html}
-                <span style="font-size:14px">{tc["icon"]}</span>
-            </span>
-        </div>
+        <span class="ts">[{m:02d}:{s:02d}]</span>
+        <span class="speaker">{spk}:</span> {text}
+        <span style="display:inline-flex;align-items:center;gap:4px;margin-left:6px;white-space:nowrap;vertical-align:middle">
+            {mom_html}<span style="font-size:14px">{tc["icon"]}</span>
+        </span>
     </div>''')
 
     # Expandable coaching card
