@@ -20,6 +20,14 @@ class QuestionQualityOutput(BaseModel):
     is_aim_null_finding: bool = False
     aim_output: Optional[str] = None
     coaching_recommendation: str
+    # SPIN breakdown — mirrors Pass 1 taxonomy so this framework and the methodology
+    # framework share a common question-type vocabulary. Counts should sum to a value
+    # <= total_questions (some questions may be unclassified).
+    spin_breakdown: dict = Field(
+        default_factory=dict,
+        description='SPIN counts: {"S": int, "P": int, "I": int, "N": int, "ratio": float}. '
+                    'Ratio = (I+N)/max(1, S+P). Rackham: top reps invert this to > 1.0.'
+    )
 
 
 SYSTEM_PROMPT = """You are a precise sales call analyst. Your task is to evaluate question quality and diagnostic power in sales conversations.
@@ -98,6 +106,10 @@ USER_PROMPT = """
 {transcript_text}
 </transcript>
 
+<pass1_spin_reference>
+{pass1_spin_data}
+</pass1_spin_reference>
+
 Analyze the transcript following these steps precisely:
 
 Step 1: Extract every question the rep asked. For each question, record:
@@ -125,7 +137,15 @@ Step 6: Write a coaching_recommendation following the COACHING TEMPLATE:
 
 Step 7: Populate the evidence array with one entry per question, each containing: segment_id, timestamp, quote, classification, diagnostic_power.
 
-Remember: null/empty is a valid answer. Do not fabricate evidence. If the rep asked zero questions, return total_questions: 0 and set is_aim_null_finding: true.
+Step 8: SPIN breakdown (Neil Rackham, Huthwaite 1988). Using the pass1_spin_reference above as a starting point (verify against the transcript — do not trust it blindly), classify each rep question as one of:
+   - S (Situation): factual/background — "how many reps do you have?"
+   - P (Problem): surfaces difficulty/pain — "what's falling short in your current tool?"
+   - I (Implication): amplifies pain by exposing downstream consequences — "what happens to churn if ramp stays at 6 months?"
+   - N (Need-payoff): buyer articulates value — "if we cut ramp in half, what would that mean for quota?"
+   Populate spin_breakdown as {{"S": n, "P": n, "I": n, "N": n, "ratio": (I+N)/max(1,S+P)}}.
+   Rackham's key finding: top reps keep S low, invest heavily in I and N (ratio > 1.0). Reflect this in your coaching if the ratio is < 0.5 on a discovery/demo call.
+
+Remember: null/empty is a valid answer. Do not fabricate evidence. If the rep asked zero questions, return total_questions: 0 and set is_aim_null_finding: true, and spin_breakdown: {{"S":0,"P":0,"I":0,"N":0,"ratio":0.0}}.
 
 Return a single JSON object with the specified schema.
 """

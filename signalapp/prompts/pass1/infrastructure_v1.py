@@ -37,6 +37,20 @@ class AppraisalInstance(BaseModel):
     text_excerpt: str
 
 
+class SPINQuestion(BaseModel):
+    """A rep question classified under Neil Rackham's SPIN taxonomy.
+
+    S (Situation): factual/background about buyer's current state.
+    P (Problem): surfaces a specific difficulty or dissatisfaction.
+    I (Implication): amplifies a stated problem — exposes downstream consequences.
+    N (Need-payoff): invites the buyer to articulate the value of a solution.
+    """
+    segment_id: str
+    speaker_role: str  # "rep" expected
+    spin_type: str  # "S" | "P" | "I" | "N"
+    text_excerpt: str  # verbatim question
+
+
 class Pass1Output(BaseModel):
     # Per-segment hedge instances
     hedges: list[HedgeInstance] = Field(default_factory=list)
@@ -64,6 +78,12 @@ class Pass1Output(BaseModel):
         description="Speaker who stated the first specific number"
     )
     transcript_duration_minutes: float = Field(default=0.0)
+
+    # SPIN question classification (Neil Rackham, Huthwaite 1988)
+    spin_questions: list[SPINQuestion] = Field(
+        default_factory=list,
+        description="Rep questions classified as Situation/Problem/Implication/Need-payoff. Cap at 20 highest-signal rep questions."
+    )
 
 
 # ─── Prompt Template ─────────────────────────────────────────────────────────
@@ -96,6 +116,7 @@ Return a single JSON object with:
 - contains_dollar_amount: bool
 - first_number_speaker: name of speaker who stated first number, or null
 - transcript_duration_minutes: estimated duration in minutes
+- spin_questions: list of rep questions classified under SPIN (max 20)
 
 Hedge types:
 - epistemic: "I think", "maybe", "probably", "I believe"
@@ -109,6 +130,18 @@ Appraisal types:
 - affect: "I feel frustrated" — emotional reaction
 - judgment: "your team can't deliver" — evaluation of people/capability
 - appreciation: "the product is elegant" — evaluation of things/processes
+
+SPIN question classification (classify ONLY questions asked by the rep; skip buyer questions):
+- S (Situation): factual/background about buyer's current state. E.g. "How many reps do you have?", "What tool are you using today?"
+- P (Problem): surfaces a difficulty, dissatisfaction, or pain. E.g. "Where is your current tool falling short?", "What's frustrating about that process?"
+- I (Implication): amplifies a stated problem by exposing its downstream consequences. E.g. "What happens to churn if ramp time stays at 6 months?", "How does that delay affect revenue?"
+- N (Need-payoff): invites the BUYER to articulate the value of solving the problem. E.g. "If we cut ramp by half, what would that mean for your quota?", "How valuable would it be to eliminate the manual compliance step?"
+
+Rules:
+- Classify at most 20 rep questions (pick the highest-signal ones — skip pure logistics like "can you hear me?").
+- If the rep asked zero questions, return an empty list. Do not fabricate.
+- Use the segment_id where the question appears.
+- spin_type must be exactly one of "S", "P", "I", "N".
 """
 
 

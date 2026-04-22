@@ -39,6 +39,19 @@ async def generate_summary_node(state: PipelineState) -> dict:
     pass1_result = state.get("pass1_result") or {}
     base_metrics = state.get("base_metrics") or {}
     call_id = state["call_id"]
+    call_type = state.get("call_type", "other")
+
+    # SPIN data derived by Pass 1 — surfaced to UI and used for coaching
+    spin_counts = pass1_result.get("spin_counts") or {"S": 0, "P": 0, "I": 0, "N": 0}
+    spin_ratio = float(pass1_result.get("spin_ratio") or 0.0)
+    spin_questions = pass1_result.get("spin_questions") or []
+    spin_block = {
+        "counts": spin_counts,
+        "ratio": spin_ratio,
+        "total": sum(spin_counts.values()),
+        "sample_questions": spin_questions[:6],
+        "applicable": call_type in ("discovery", "demo") and sum(spin_counts.values()) >= 3,
+    }
 
     config = get_config()
 
@@ -67,6 +80,10 @@ async def generate_summary_node(state: PipelineState) -> dict:
 
     # Build summary structure
     if structured:
+        coaching_focus = structured.coaching_focus
+        spin_note = _spin_coaching_note(spin_block, call_type)
+        if spin_note:
+            coaching_focus = (coaching_focus + "\n\n" + spin_note).strip() if coaching_focus else spin_note
         summary = {
             "call_id": call_id,
             "headline": _generate_headline(severity_counts),
@@ -76,7 +93,7 @@ async def generate_summary_node(state: PipelineState) -> dict:
             "action_items_buyer": structured.action_items_buyer,
             "open_questions": structured.open_questions,
             "deal_assessment": structured.deal_assessment,
-            "coaching_focus": structured.coaching_focus,
+            "coaching_focus": coaching_focus,
             "key_themes": [i.get("headline", "") for i in top_insights[:3] if i.get("headline")],
             "top_insight": top_insights[0].get("headline", "No significant insights") if top_insights else "No significant insights",
             "severity_breakdown": severity_counts,
@@ -84,10 +101,15 @@ async def generate_summary_node(state: PipelineState) -> dict:
             "frameworks_run": list(framework_results.keys()) if framework_results else [],
             "ai_summary_text": structured.recap,
             "base_metrics": base_metrics,
+            "spin": spin_block,
         }
     else:
         # Fallback
         fallback_text = _generate_fallback_summary(verified_insights, top_insights, severity_counts)
+        coaching_focus = top_insights[0].get("coaching_recommendation", "")[:200] if top_insights else ""
+        spin_note = _spin_coaching_note(spin_block, call_type)
+        if spin_note:
+            coaching_focus = (coaching_focus + "\n\n" + spin_note).strip() if coaching_focus else spin_note
         summary = {
             "call_id": call_id,
             "headline": _generate_headline(severity_counts),
@@ -97,7 +119,7 @@ async def generate_summary_node(state: PipelineState) -> dict:
             "action_items_buyer": [],
             "open_questions": _extract_open_questions(verified_insights),
             "deal_assessment": _assess_deal_from_severity(severity_counts),
-            "coaching_focus": top_insights[0].get("coaching_recommendation", "")[:200] if top_insights else "",
+            "coaching_focus": coaching_focus,
             "key_themes": [i.get("headline", "") for i in top_insights[:3] if i.get("headline")],
             "top_insight": top_insights[0].get("headline", "No significant insights") if top_insights else "No significant insights",
             "severity_breakdown": severity_counts,
@@ -105,6 +127,7 @@ async def generate_summary_node(state: PipelineState) -> dict:
             "frameworks_run": list(framework_results.keys()) if framework_results else [],
             "ai_summary_text": fallback_text,
             "base_metrics": base_metrics,
+            "spin": spin_block,
         }
 
     return {"summary": summary}
@@ -243,6 +266,41 @@ def _extract_open_questions(insights: list[dict]) -> list[str]:
             raw = insight.get("evidence", [])
             return [e.get("quote", "")[:100] for e in raw[:5] if e.get("quote")]
     return []
+
+
+def _spin_coaching_note(spin_block: dict, call_type: str) -> str:
+    """Generate a SPIN coaching line when the rep's question mix is weak.
+
+    Only applies to discovery/demo calls with enough classified questions to be meaningful.
+    Rackham's finding: top reps invert the S+P / I+N ratio. If ratio < 0.5, flag it.
+    """
+    if not spin_block or not spin_block.get("applicable"):
+        return ""
+    counts = spin_block.get("counts") or {}
+    ratio = float(spin_block.get("ratio") or 0.0)
+    s = counts.get("S", 0)
+    p = counts.get("P", 0)
+    i = counts.get("I", 0)
+    n = counts.get("N", 0)
+    total = spin_block.get("total", 0)
+    if total < 3:
+        return ""
+    if ratio < 0.5:
+        return (
+            f"SPIN (Rackham): Rep asked {s} Situation + {p} Problem questions but only "
+            f"{i} Implication + {n} Need-payoff (ratio {ratio:.2f}). Huthwaite's 35,000-call study "
+            f"found top reps invert this — they minimize Situation questions and lean on Implication "
+            f"(amplify consequences) and Need-payoff (let the buyer articulate value). Try one of: "
+            f"'What happens to [buyer's pain] if this continues for another quarter?' or "
+            f"'If we eliminated [specific friction], what would that free you up to do?'"
+        )
+    if i == 0 and n == 0:
+        return (
+            f"SPIN (Rackham): Rep asked {total} questions but zero Implication or Need-payoff. "
+            f"The buyer never got to articulate consequences or value in their own words — "
+            f"this correlates with weaker commitment at close."
+        )
+    return ""
 
 
 def _assess_deal_from_severity(severity_counts: dict) -> str:

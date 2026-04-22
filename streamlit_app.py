@@ -1342,7 +1342,61 @@ def _render_stats(metrics, summary):
 
     st.markdown("---")
     if summary:
+        _render_spin_breakdown(summary)
         _render_severity_bars(summary)
+
+
+def _render_spin_breakdown(summary):
+    """SPIN question taxonomy breakdown (Neil Rackham, 1988).
+
+    Only shown when pass 1 classified enough rep questions to be meaningful
+    (handled upstream via spin_block.applicable).
+    """
+    spin = (summary or {}).get("spin") or {}
+    if not spin.get("applicable"):
+        return
+    counts = spin.get("counts") or {}
+    s = int(counts.get("S", 0))
+    p = int(counts.get("P", 0))
+    i = int(counts.get("I", 0))
+    n = int(counts.get("N", 0))
+    ratio = float(spin.get("ratio") or 0.0)
+    total = max(1, s + p + i + n)
+
+    if ratio >= 1.0:
+        badge_color, badge_label = "#34D399", "STRONG"
+    elif ratio >= 0.5:
+        badge_color, badge_label = "#FBBF24", "ADEQUATE"
+    else:
+        badge_color, badge_label = "#F87171", "WEAK"
+
+    st.markdown("**SPIN Question Mix** (Rackham 1988)")
+    st.html(
+        f'<div style="font-size:12px;color:{TEXT_SECONDARY};margin-bottom:6px">'
+        f'Ratio (I+N)/(S+P) = <b style="color:{badge_color}">{ratio:.2f}</b> '
+        f'<span style="background:{badge_color};color:#0B0F19;padding:1px 6px;border-radius:4px;'
+        f'font-size:10px;font-weight:700;margin-left:6px">{badge_label}</span>'
+        f'</div>'
+    )
+    bars = [
+        ("S", "Situation", s, "#94A3B8"),
+        ("P", "Problem", p, "#60A5FA"),
+        ("I", "Implication", i, "#A78BFA"),
+        ("N", "Need-payoff", n, "#34D399"),
+    ]
+    for letter, label, count, color in bars:
+        pct = count / total
+        st.html(
+            f'<div style="display:flex;align-items:center;gap:8px;margin:3px 0;font-size:12px">'
+            f'<div style="width:90px;color:{TEXT_PRIMARY}"><b>{letter}</b> · {label}</div>'
+            f'<div style="flex:1;height:8px;background:#1F2937;border-radius:4px;overflow:hidden">'
+            f'<div style="height:100%;width:{pct*100:.0f}%;background:{color}"></div>'
+            f'</div>'
+            f'<div style="width:28px;text-align:right;color:{TEXT_PRIMARY};font-weight:700">{count}</div>'
+            f'</div>'
+        )
+    st.caption("Top reps keep S low and lean on I (amplify consequences) + N (buyer articulates value).")
+    st.markdown("---")
 
 
 def _render_severity_bars(summary):

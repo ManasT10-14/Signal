@@ -56,6 +56,9 @@ async def pass1_extract_node(state: PipelineState) -> dict:
             "transcript_duration_minutes": estimated_duration / 60.0,
             "hedge_density_buyer": 0.0,
             "hedge_density_rep": 0.0,
+            "spin_questions": [],
+            "spin_counts": {"S": 0, "P": 0, "I": 0, "N": 0},
+            "spin_ratio": 0.0,
             "prompt_version": "stub",
             "model_used": "none",
             "model_version": "stub",
@@ -105,6 +108,16 @@ async def pass1_extract_node(state: PipelineState) -> dict:
                 config=llm_config,
             )
 
+            # Serialize SPIN questions and compute counts + ratio
+            spin_questions_raw = [q.model_dump() for q in getattr(result, "spin_questions", []) or []]
+            spin_questions = _normalize_spin_questions(spin_questions_raw)
+            if not spin_questions:
+                # Fallback: empty from LLM — skip keyword fallback here since LLM is richer;
+                # downstream consumers gate on spin_ratio.
+                pass
+            spin_counts = _compute_spin_counts(spin_questions)
+            spin_ratio = _compute_spin_ratio(spin_counts)
+
             # Serialize Pass1Result into state format
             pass1_result = {
                 "hedge_data": [
@@ -122,6 +135,9 @@ async def pass1_extract_node(state: PipelineState) -> dict:
                 "transcript_duration_minutes": result.transcript_duration_minutes,
                 "hedge_density_buyer": result.hedge_density_buyer,
                 "hedge_density_rep": result.hedge_density_rep,
+                "spin_questions": spin_questions,
+                "spin_counts": spin_counts,
+                "spin_ratio": spin_ratio,
                 "prompt_version": "v1",
                 "model_used": "gemini",
                 "model_version": config.llm_pass1.model,
@@ -171,6 +187,7 @@ async def pass1_extract_node(state: PipelineState) -> dict:
             logger.warning(f"pass1_extract_node: all attempts failed: {error_str[:200]}. Using stub signals.")
             segment_count = len(state.get("transcript_segments", []))
             estimated_duration = segment_count * 30.0
+            fallback_spin = _classify_spin_keyword(state["transcript_segments"])
             stub_pass1 = {
                 "hedge_data": [],
                 "sentiment_data": [],
@@ -181,6 +198,9 @@ async def pass1_extract_node(state: PipelineState) -> dict:
                 "transcript_duration_minutes": estimated_duration / 60.0,
                 "hedge_density_buyer": 0.0,
                 "hedge_density_rep": 0.0,
+                "spin_questions": fallback_spin,
+                "spin_counts": _compute_spin_counts(fallback_spin),
+                "spin_ratio": _compute_spin_ratio(_compute_spin_counts(fallback_spin)),
                 "prompt_version": "stub",
                 "model_used": "none",
                 "model_version": "stub",
@@ -497,6 +517,13 @@ def _try_partial_pass1_extraction(raw_text: str | None, segments: list[dict]) ->
     dollar = bool(data.get("contains_dollar_amount"))
     first_num = data.get("first_number_speaker")
 
+    # SPIN — prefer LLM output, fall back to keyword classifier if absent
+    raw_spin = data.get("spin_questions") or []
+    spin_norm = _normalize_spin_questions(raw_spin if isinstance(raw_spin, list) else [])
+    if not spin_norm:
+        spin_norm = _classify_spin_keyword(segments)
+    spin_counts = _compute_spin_counts(spin_norm)
+
     return {
         "hedge_data": hedges,
         "sentiment_data": sentiment,
@@ -507,6 +534,9 @@ def _try_partial_pass1_extraction(raw_text: str | None, segments: list[dict]) ->
         "transcript_duration_minutes": data.get("transcript_duration_minutes", duration_min),
         "hedge_density_buyer": data.get("hedge_density_buyer", 0.0),
         "hedge_density_rep": data.get("hedge_density_rep", 0.0),
+        "spin_questions": spin_norm,
+        "spin_counts": spin_counts,
+        "spin_ratio": _compute_spin_ratio(spin_counts),
         "prompt_version": "partial",
         "model_used": "gemini",
         "model_version": "partial",
@@ -540,3 +570,124 @@ def _gate_signals_from_pass1(pass1_result: dict, segments: list[dict]) -> "Pass1
         has_close_language=_detect_close_language(segments),
         call_duration_minutes=dur,
     )
+
+
+# ── SPIN classification helpers ─────────────────────────────────────────────────
+
+_VALID_SPIN = {"S", "P", "I", "N"}
+
+
+def _normalize_spin_questions(raw: list) -> list[dict]:
+    """Normalize LLM-provided SPIN instances into our canonical dict shape.
+
+    Drops anything that isn't a dict with a valid spin_type.
+    """
+    out: list[dict] = []
+    if not isinstance(raw, list):
+        return out
+    for item in raw[:30]:  # hard cap to prevent runaway LLM output
+        if not isinstance(item, dict):
+            continue
+        stype = str(item.get("spin_type", "")).strip().upper()
+        if stype not in _VALID_SPIN:
+            continue
+        text = str(item.get("text_excerpt", "")).strip()
+        if not text:
+            continue
+        out.append({
+            "segment_id": str(item.get("segment_id", "") or ""),
+            "speaker_role": str(item.get("speaker_role", "rep") or "rep"),
+            "spin_type": stype,
+            "text_excerpt": text[:300],
+        })
+    return out
+
+
+def _compute_spin_counts(spin_questions: list[dict]) -> dict:
+    counts = {"S": 0, "P": 0, "I": 0, "N": 0}
+    for q in spin_questions:
+        t = q.get("spin_type")
+        if t in counts:
+            counts[t] += 1
+    return counts
+
+
+def _compute_spin_ratio(counts: dict) -> float:
+    """Rackham's insight: top reps invert the S+P vs I+N ratio.
+
+    Returns (I + N) / max(1, S + P). 1.0 = balanced, >1.0 = implication/payoff heavy.
+    """
+    sp = counts.get("S", 0) + counts.get("P", 0)
+    in_ = counts.get("I", 0) + counts.get("N", 0)
+    return round(in_ / max(1, sp), 3)
+
+
+# Keyword/heuristic fallback classifier — used when LLM fails or in stub paths.
+# Precision over recall: we'd rather mark "unclassified" than mis-label a Situation question as Implication.
+_IMPLICATION_MARKERS = (
+    "what happens if", "what happens when", "how does that affect", "how does that impact",
+    "what's the impact", "what is the impact", "cost you", "costing you",
+    "consequence", "consequences", "downstream", "ripple effect",
+    "if that continues", "if that persists", "if nothing changes",
+)
+_NEED_PAYOFF_MARKERS = (
+    "how valuable", "how useful", "what would it mean", "what would that mean",
+    "how would that help", "what would you do with", "how much would you save",
+    "what would you save", "if we could", "if we solved", "if you could",
+    "how important is it to", "how critical",
+)
+_PROBLEM_MARKERS = (
+    "what's frustrating", "what is frustrating", "what's the biggest challenge",
+    "biggest challenge", "biggest pain", "falling short", "not working",
+    "what's not working", "what isn't working", "where are you stuck",
+    "what's holding", "what's blocking", "what goes wrong", "what keeps you up",
+    "pain point", "what concerns", "difficulties", "struggling with",
+)
+_SITUATION_MARKERS = (
+    "how many", "how long", "how often", "what tool", "which tool",
+    "what system", "which system", "who", "when did", "where do you",
+    "walk me through", "tell me about your current", "describe your current",
+    "what does your", "what do you currently",
+)
+
+
+def _classify_spin_keyword(segments: list[dict]) -> list[dict]:
+    """Best-effort SPIN classification from rep questions using keyword markers.
+
+    Only fires when the LLM path failed. Returns the canonical dict shape.
+    """
+    out: list[dict] = []
+    for seg in segments:
+        if seg.get("speaker_role") != "rep":
+            continue
+        text = str(seg.get("text", "") or "")
+        if "?" not in text:
+            continue
+        # Split by sentences so we classify per-question, not per-segment
+        for sentence in re.split(r'(?<=[.?!])\s+', text):
+            if "?" not in sentence:
+                continue
+            q = sentence.strip()
+            if len(q) < 6:
+                continue
+            low = q.lower()
+            stype = None
+            if any(m in low for m in _IMPLICATION_MARKERS):
+                stype = "I"
+            elif any(m in low for m in _NEED_PAYOFF_MARKERS):
+                stype = "N"
+            elif any(m in low for m in _PROBLEM_MARKERS):
+                stype = "P"
+            elif any(m in low for m in _SITUATION_MARKERS):
+                stype = "S"
+            if stype is None:
+                continue
+            out.append({
+                "segment_id": str(seg.get("segment_id", "") or ""),
+                "speaker_role": "rep",
+                "spin_type": stype,
+                "text_excerpt": q[:300],
+            })
+            if len(out) >= 20:
+                return out
+    return out

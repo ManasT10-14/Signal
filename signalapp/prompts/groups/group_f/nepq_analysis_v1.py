@@ -341,6 +341,12 @@ USER_PROMPT = """
 {pass1_appraisal_data}
 </pass1_appraisal_data>
 
+<pass1_spin_reference>
+{pass1_spin_data}
+</pass1_spin_reference>
+
+NOTE: SPIN (Rackham 1988) and NEPQ share deep lineage. NEPQ phases 2–5 (Situation → Problem Awareness → Solution Awareness → Consequence) map to SPIN's S → P → I. Use the SPIN reference above as a cross-check — if SPIN shows N=0 and I=0 but you score diagnostic_depth high, revisit your depth_score. They should agree.
+
 Analyze this {call_type} call against the NEPQ methodology. Follow these steps:
 
 Step 1 — CALL TYPE CONTEXT:

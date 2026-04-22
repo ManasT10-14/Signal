@@ -109,6 +109,9 @@ async def execute_groups_node(state: PipelineState) -> dict:
     hedge_data = pass1_result.get("hedge_data", [])
     sentiment_data = pass1_result.get("sentiment_data", [])
     appraisal_data = pass1_result.get("appraisal_data", [])
+    spin_questions = pass1_result.get("spin_questions", [])
+    spin_counts = pass1_result.get("spin_counts", {"S": 0, "P": 0, "I": 0, "N": 0})
+    spin_ratio = pass1_result.get("spin_ratio", 0.0)
 
     # Build tasks for all active frameworks
     tasks = []
@@ -142,6 +145,9 @@ async def execute_groups_node(state: PipelineState) -> dict:
             hedge_data=hedge_data,
             sentiment_data=sentiment_data,
             appraisal_data=appraisal_data,
+            spin_questions=spin_questions,
+            spin_counts=spin_counts,
+            spin_ratio=spin_ratio,
             transcript_segments=state["transcript_segments"],
         )
         tasks.append(task)
@@ -184,6 +190,9 @@ async def _run_framework(
     hedge_data: list = None,
     sentiment_data: list = None,
     appraisal_data: list = None,
+    spin_questions: list = None,
+    spin_counts: dict = None,
+    spin_ratio: float = 0.0,
     transcript_segments: list = None,
 ):
     """Run a single framework LLM call and return FrameworkOutput."""
@@ -213,6 +222,11 @@ async def _run_framework(
     # Add call_type if the template uses it (e.g., NEPQ prompt)
     if "{call_type}" in user_template:
         format_kwargs["call_type"] = call_type
+    # Add SPIN data if the template uses it (FW-5, FW-14, FW-20)
+    if "{pass1_spin_data}" in user_template:
+        format_kwargs["pass1_spin_data"] = _format_spin_block(
+            spin_questions or [], spin_counts or {}, spin_ratio
+        )
     user_prompt = user_template.format(**format_kwargs)
 
     full_prompt = f"{system_prompt}\n\n{user_prompt}"
@@ -532,6 +546,24 @@ def _format_transcript(segments: list[dict]) -> str:
         role = seg.get("speaker_role", "unknown")
         text = seg.get("text", "")
         lines.append(f"[{timestamp}] {speaker} ({role}): {text}")
+    return "\n".join(lines)
+
+
+def _format_spin_block(spin_questions: list[dict], spin_counts: dict, spin_ratio: float) -> str:
+    """Render Pass-1 SPIN classification as a compact reference block for downstream prompts."""
+    if not spin_questions:
+        return "No SPIN-classified questions available (rep may not have asked diagnostic questions)."
+    counts = spin_counts or {}
+    s, p, i, n = counts.get("S", 0), counts.get("P", 0), counts.get("I", 0), counts.get("N", 0)
+    lines = [
+        f"SPIN question counts: S={s}, P={p}, I={i}, N={n}",
+        f"SPIN ratio (I+N)/(S+P) = {spin_ratio:.2f}  [top-performer benchmark: > 1.0]",
+        "Sample classified questions (from Pass 1):",
+    ]
+    for q in spin_questions[:12]:
+        lines.append(
+            f"  - [{q.get('spin_type','?')}] seg={q.get('segment_id','')}: \"{q.get('text_excerpt','')[:160]}\""
+        )
     return "\n".join(lines)
 
 

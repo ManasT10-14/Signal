@@ -18,6 +18,12 @@ class MethodologyComplianceOutput(BaseModel):
     is_aim_null_finding: bool = False
     aim_output: Optional[str] = None
     coaching_recommendation: str
+    # Sub-scores per methodology. Each is 0.0-1.0; null/missing = not evaluated.
+    spin_sub_score: Optional[float] = Field(
+        default=None, ge=0.0, le=1.0,
+        description="SPIN adherence 0-1. 1.0 = strong I+N usage (ratio > 1.0) with correct S→P→I→N progression. "
+                    "0.0 = all Situation questions, no Implication or Need-payoff."
+    )
 
 
 SYSTEM_PROMPT = """You are a precise sales call analyst. Your task is to evaluate methodology compliance -- whether the rep followed a structured sales call flow with proper sequencing and sufficient depth in each phase.
@@ -121,6 +127,10 @@ USER_PROMPT = """
 {pass1_hedge_data}
 </pass1_hedge_data>
 
+<pass1_spin_reference>
+{pass1_spin_data}
+</pass1_spin_reference>
+
 Analyze the transcript following these steps precisely:
 
 Step 1: Identify which methodology phases are present in the call. For each phase, record:
@@ -152,6 +162,18 @@ Step 7: Write a coaching_recommendation following the COACHING TEMPLATE:
    b. Provide a word-for-word example of how to execute that phase properly
 
 Step 8: Populate the evidence array with one entry per phase, each containing: phase_name, depth, segment_id_range, key_quote, assessment.
+
+Step 9: Score SPIN adherence (Neil Rackham, 1988) using pass1_spin_reference above as your starting data (verify against transcript).
+   SPIN adherence is about TWO things:
+   a) Ratio: (I+N)/max(1, S+P). Rackham's data shows top reps invert this. Ratio >= 1.0 = strong; 0.5-1.0 = adequate; < 0.5 = weak.
+   b) Sequence: did the rep progress S → P → I → N (generally)? Jumping straight to Implication before establishing any Problem is a violation.
+   Compute spin_sub_score (0.0-1.0):
+     - 0.90-1.00: ratio >= 1.0 AND clear S→P→I→N progression
+     - 0.70-0.89: ratio 0.6-1.0 AND mostly correct progression
+     - 0.40-0.69: ratio 0.3-0.6 OR progression issues
+     - 0.10-0.39: ratio < 0.3 (mostly Situation questions, little pain development)
+     - 0.00-0.09: no Implication or Need-payoff questions at all on a discovery/demo call
+   If the call type is check_in or pricing (not discovery/demo) OR rep asked < 3 questions, set spin_sub_score to null.
 
 Remember: null/empty is a valid answer. Do not fabricate evidence. If the transcript is too short or unclear to assess methodology, explain why in the explanation field.
 
