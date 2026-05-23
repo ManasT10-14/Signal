@@ -7,9 +7,18 @@ All results are collected into framework_results dict keyed by fw_id.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
+import re
+from typing import TYPE_CHECKING
+
 from signalapp.pipeline.state import PipelineState
+
+if TYPE_CHECKING:
+    from signalapp.adapters.llm.base import LLMConfig
+    from signalapp.adapters.llm.gemini import GeminiProvider
+    from signalapp.domain.framework import FrameworkOutput
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +81,6 @@ async def execute_groups_node(state: PipelineState) -> dict:
     from signalapp.app.config import get_config
     from signalapp.adapters.llm.gemini import GeminiProvider
     from signalapp.adapters.llm.base import LLMConfig
-    from signalapp.domain.framework import FrameworkOutput
 
     # LLM availability guard — fail fast if no credentials
     if not _check_llm_available():
@@ -370,7 +378,7 @@ def _stub_framework_output(fw_id: int, error: str) -> FrameworkOutput:
         score=None,
         severity=Severity.YELLOW,
         confidence=0.0,
-        headline=f"Analysis unavailable",
+        headline="Analysis unavailable",
         explanation=f"Analysis could not be completed: {error}",
         evidence=[],
         coaching_recommendation="Unable to generate recommendation.",
@@ -569,9 +577,6 @@ def _format_spin_block(spin_questions: list[dict], spin_counts: dict, spin_ratio
 
 # ── Partial extraction helpers (PRD: ≥50% fields valid → use partial results) ───
 
-import json
-import re
-
 
 def _get_raw_response_text(provider, prompt: str, config, llm_config) -> str | None:
     """Get the raw response text from the provider for partial parsing."""
@@ -647,7 +652,6 @@ def _try_partial_extraction(output_class, raw_text: str, fw_id: int):
     # Get evidence / instances
     evidence = data.get("evidence") or data.get("commitment_instances") or data.get("timing_signals") or []
     if evidence and isinstance(evidence, list) and len(evidence) > 0:
-        first_item = evidence[0] if isinstance(evidence[0], dict) else {}
         clean_evidence = [
             {
                 "segment_id": e.get("segment_id", ""),

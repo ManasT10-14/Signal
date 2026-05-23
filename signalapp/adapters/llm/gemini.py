@@ -15,7 +15,6 @@ import json
 import logging
 import os
 import time
-from dataclasses import dataclass
 
 from google.genai import types
 import google.genai as genai
@@ -82,7 +81,6 @@ class GeminiProvider(LLMProvider):
         response_model: type,
         config: LLMConfig,
     ):
-        start = time.perf_counter()
         client = self._get_client()
 
         # Build GenerateContentConfig as a Pydantic model (SDK 1.62.0+)
@@ -113,14 +111,7 @@ class GeminiProvider(LLMProvider):
                 raw_text="",
             )
 
-        latency_ms = int((time.perf_counter() - start) * 1000)
         raw_text = response.text or ""
-        tokens_input = len(prompt) // 4
-        tokens_output = len(raw_text) // 4
-        cost_usd = (
-            tokens_input / 1_000_000 * GEMINI_INPUT_COST_PER_M
-            + tokens_output / 1_000_000 * GEMINI_OUTPUT_COST_PER_M
-        )
 
         # Parse and validate response
         try:

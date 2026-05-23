@@ -4,7 +4,6 @@ from __future__ import annotations
 import asyncio
 import pytest
 from unittest.mock import MagicMock
-from datetime import datetime
 import uuid
 
 
@@ -115,7 +114,7 @@ def sample_pipeline_state(sample_transcript_segments) -> dict:
 @pytest.fixture
 def mock_llm_provider():
     """Return a mock LLM provider that returns stub responses."""
-    from unittest.mock import AsyncMock, MagicMock
+    from unittest.mock import AsyncMock
 
     mock = MagicMock()
     mock.complete_structured = AsyncMock(return_value=MagicMock(

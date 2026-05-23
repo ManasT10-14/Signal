@@ -64,5 +64,9 @@ htmlcov/
 .coverage
 .pytest_cache/
 
+# ── Local scratch / generated artifacts (screenshots, reports, dev DB) ──
+.artifacts/
+_test_results.json
+
 # ── Streamlit secrets ──
 .streamlit/secrets.toml

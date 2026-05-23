@@ -9,7 +9,7 @@ import pytest
 import asyncio
 
 # Test fixtures and helpers
-from signalapp.db.repository import init_db, get_session, CallRepository, TranscriptRepository
+from signalapp.db.repository import init_db, CallRepository, TranscriptRepository
 
 
 # ─── Fixtures ───────────────────────────────────────────────────────────────────
@@ -165,7 +165,6 @@ class TestPipelineState:
     def test_pipeline_state_has_required_fields(self):
         """PipelineState should have all required fields defined in the TypedDict."""
         from signalapp.pipeline.state import PipelineState
-        import typing
 
         # TypedDict fields are accessed via __annotations__
         required_fields = [
@@ -254,7 +253,7 @@ class TestInsightsAPI:
 
     def test_get_call_insights_response_structure(self):
         """Test that get_call_insights returns proper response structure."""
-        from signalapp.api.insights import CallInsightsResponse, InsightResponse
+        from signalapp.api.insights import CallInsightsResponse
 
         # Use a sample UUID
         sample_uuid = str(uuid.uuid4())
@@ -278,7 +277,7 @@ class TestCallsAPI:
     @pytest.mark.asyncio
     async def test_list_calls_response_structure(self):
         """Test that list_calls returns proper response structure."""
-        from signalapp.api.calls import CallListResponse, CallResponse
+        from signalapp.api.calls import CallListResponse
 
         response = CallListResponse(
             calls=[],
@@ -356,7 +355,7 @@ class TestRetryLogic:
     @pytest.mark.asyncio
     async def test_retry_success_first_attempt(self):
         """Test that successful coroutine returns immediately."""
-        from signalapp.reliability import RetryConfig, with_retry
+        from signalapp.reliability import with_retry
 
         attempt_count = 0
 

@@ -7,11 +7,9 @@ import uuid
 from typing import Annotated, AsyncIterator
 
 from fastapi import Depends, Header, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPBearer
 
-from signalapp.app.config import get_config
 from signalapp.db.repository import (
-    init_db,
     get_session,
     CallRepository,
     TranscriptRepository,

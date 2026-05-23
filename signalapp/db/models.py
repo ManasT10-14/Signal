@@ -8,7 +8,6 @@ from __future__ import annotations
 import json
 import uuid as uuid_lib
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import (
     Column,
@@ -25,7 +24,7 @@ from sqlalchemy import (
     TypeDecorator,
     JSON,
 )
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB as PG_JSONB
+from sqlalchemy.dialects.postgresql import JSONB as PG_JSONB
 from sqlalchemy.orm import relationship, declarative_base
 
 

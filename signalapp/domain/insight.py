@@ -2,10 +2,9 @@
 Insight domain models — Insight entity and prioritization logic.
 """
 from __future__ import annotations
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
-from pydantic import BaseModel, Field
 
 
 class InsightFeedback(str, Enum):

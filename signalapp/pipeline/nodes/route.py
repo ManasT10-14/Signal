@@ -5,7 +5,7 @@ Zero LLM cost: routing uses metadata + Pass 1 output signals.
 from __future__ import annotations
 
 from signalapp.pipeline.state import PipelineState
-from signalapp.domain.routing import route_frameworks, get_active_groups, RoutingDecision, Pass1GateSignals
+from signalapp.domain.routing import route_frameworks, get_active_groups, Pass1GateSignals
 
 
 async def route_node(state: PipelineState) -> dict:
@@ -17,7 +17,6 @@ async def route_node(state: PipelineState) -> dict:
 
     This is a pure Python node — no LLM calls.
     """
-    from signalapp.domain.routing import route_frameworks, get_active_groups
 
     call_type = state["call_type"]
     signals_dict = state.get("pass1_gate_signals")

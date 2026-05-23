@@ -8,12 +8,9 @@ import pytest
 
 from signalapp.domain.routing import (
     CALL_TYPES,
-    PINNED_FRAMEWORKS,
     ROUTING_TABLE,
     GROUP_MEMBERSHIP,
-    DEPENDENCY_RULES,
     Pass1GateSignals,
-    FrameworkRoutingSpec,
     should_run_framework,
     should_run_framework_safe,
     enforce_dependencies,

@@ -209,18 +209,18 @@ class TestFrameworkOutput:
             )
 
     def test_headline_max_length(self):
-        """Headline should be max 80 characters."""
-        # Valid short headline
+        """Headline should be max 120 characters (production truncates to <=120)."""
+        # Valid headline at the boundary
         output = FrameworkOutput(
             framework_id="FW-01",
             framework_name="Test",
             severity=Severity.GREEN,
             confidence=0.5,
-            headline="A" * 80,
+            headline="A" * 120,
             explanation="Test explanation",
             coaching_recommendation="Test rec",
         )
-        assert len(output.headline) == 80
+        assert len(output.headline) == 120
 
         # Too long headline should fail
         with pytest.raises(ValidationError):
@@ -229,7 +229,7 @@ class TestFrameworkOutput:
                 framework_name="Test",
                 severity=Severity.GREEN,
                 confidence=0.5,
-                headline="A" * 81,  # Exceeds max_length=80
+                headline="A" * 121,  # Exceeds max_length=120
                 explanation="Test explanation",
                 coaching_recommendation="Test rec",
             )

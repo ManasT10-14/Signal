@@ -17,8 +17,6 @@ from sqlalchemy.orm import selectinload
 
 from .models import (
     Base,
-    Organization,
-    User,
     Call,
     Transcript,
     TranscriptSegment,
@@ -27,7 +25,6 @@ from .models import (
     FrameworkResult,
     Insight,
     BaseMetric,
-    Setting,
 )
 
 

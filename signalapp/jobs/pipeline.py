@@ -93,6 +93,8 @@ async def run_pipeline_job(ctx: dict, call_id: str, force_reanalyze: bool = Fals
         return {"status": "error", "error": str(e)}
 
 
-# Register with memory queue if in use
-from signalapp.jobs.memory import register_job
+# Register with memory queue if in use.
+# Imported here (not at top) to avoid a circular import with signalapp.jobs.memory.
+from signalapp.jobs.memory import register_job  # noqa: E402
+
 run_pipeline_job = register_job(run_pipeline_job)

@@ -78,7 +78,6 @@ async def verify_node(state: PipelineState) -> dict:
         from signalapp.domain.frameworks import get_framework_name
         framework_name = result.get("framework_name") or get_framework_name(fw_id)
         aim_output = result.get("aim_output")
-        raw_analysis = result.get("raw_analysis", {})
 
         severity_str = normalize_severity(severity_val)
 

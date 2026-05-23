@@ -6,7 +6,7 @@ Each node returns a dict with only the fields it updates; LangGraph merges them.
 """
 from __future__ import annotations
 
-from typing import TypedDict, Optional
+from typing import TypedDict
 
 
 class PipelineState(TypedDict, total=False):

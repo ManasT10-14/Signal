@@ -31,7 +31,6 @@ async def run_preprocessing_job(ctx: dict, call_id: str) -> dict:
     - longest_rep_turn_seconds
     """
     from signalapp.db.repository import (
-        CallRepository,
         TranscriptRepository,
         BaseMetricRepository,
         get_session,
@@ -55,7 +54,7 @@ async def run_preprocessing_job(ctx: dict, call_id: str) -> dict:
             metric_repo = BaseMetricRepository()
             stored_metrics = []
             for metric_name, metric_value in metrics.items():
-                metric = await metric_repo.upsert(
+                await metric_repo.upsert(
                     call_id=call_uuid,
                     metric_name=metric_name,
                     metric_value=metric_value,
@@ -64,11 +63,7 @@ async def run_preprocessing_job(ctx: dict, call_id: str) -> dict:
                 stored_metrics.append(metric_name)
 
             # Update call duration if not already set
-            call_repo = CallRepository()
-            duration = metrics.get("total_duration_seconds", {}).get("value")
-            if duration:
-                # Duration update would happen here if Call model supported it
-                pass
+            # (Duration update would happen here once the Call model supports it.)
 
             logger.info(
                 f"[preprocessing] Computed {len(stored_metrics)} base metrics for {call_id}"

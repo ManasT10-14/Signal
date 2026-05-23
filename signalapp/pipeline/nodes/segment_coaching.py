@@ -15,12 +15,10 @@ Annotation types:
 """
 from __future__ import annotations
 
-import json
 import logging
 import os
 
 from pydantic import BaseModel, Field
-from typing import Optional
 from signalapp.pipeline.state import PipelineState
 
 logger = logging.getLogger(__name__)

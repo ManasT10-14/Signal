@@ -7,12 +7,11 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import AsyncIterator
 
 from sqlalchemy import select, func
 
 from signalapp.db.repository import get_session
-from signalapp.db.models import Call, AnalysisRun, FrameworkResult, Pass1Result
+from signalapp.db.models import AnalysisRun, FrameworkResult, Pass1Result
 
 
 @dataclass

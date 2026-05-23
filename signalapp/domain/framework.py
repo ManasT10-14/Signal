@@ -3,10 +3,11 @@ Framework domain models — FrameworkOutput, FrameworkResult, etc.
 These are the core data structures used throughout the pipeline.
 """
 from __future__ import annotations
-from dataclasses import dataclass, field
+import dataclasses
+from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class Severity(str, Enum):
@@ -53,7 +54,7 @@ class FrameworkOutput(BaseModel):
     score: Optional[float] = Field(default=None, ge=0, le=100)
     severity: Severity
     confidence: float = Field(ge=0.0, le=1.0)
-    headline: str
+    headline: str = Field(max_length=120)  # production truncates to <=120 before construction
     explanation: str
     evidence: list[dict] = Field(default_factory=list)  # Flexible dict format for evidence
     coaching_recommendation: str
@@ -61,6 +62,30 @@ class FrameworkOutput(BaseModel):
     # AIM output (when framework runs due to AIM but finds nothing)
     is_aim_null_finding: bool = False
     aim_output: Optional[str] = None  # e.g., "No alternatives detected — weak BATNA"
+
+    @field_validator("evidence", mode="before")
+    @classmethod
+    def _coerce_evidence(cls, v):
+        """Accept EvidenceRef (or any dataclass) items and coerce them to dicts.
+
+        Production builds evidence as plain dicts; callers/tests may also pass
+        EvidenceRef dataclasses. Normalize both to dicts so the stored shape is
+        consistent and downstream `.get()` access keeps working.
+        """
+        if not v:
+            return v
+        coerced = []
+        for item in v:
+            if dataclasses.is_dataclass(item) and not isinstance(item, type):
+                as_dict = dataclasses.asdict(item)
+                # Flatten any Enum values (e.g. EvidenceType) to their plain value
+                for key, val in as_dict.items():
+                    if isinstance(val, Enum):
+                        as_dict[key] = val.value
+                coerced.append(as_dict)
+            else:
+                coerced.append(item)
+        return coerced
 
 
 @dataclass

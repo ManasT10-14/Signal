@@ -4,9 +4,15 @@ Extracts hedge map, sentiment trajectory, and evaluative language.
 """
 from __future__ import annotations
 
+import json
 import os
 import re
+from typing import TYPE_CHECKING
+
 from signalapp.pipeline.state import PipelineState
+
+if TYPE_CHECKING:
+    from signalapp.domain.routing import Pass1GateSignals
 
 
 def _check_llm_available() -> bool:
@@ -417,8 +423,6 @@ def _detect_objection_from_text(segments: list[dict]) -> bool:
 
 # ── Partial extraction helpers for Pass1 ────────────────────────────────────────
 
-import json
-
 
 def _get_raw_response_text(provider, prompt: str, llm_config) -> str | None:
     """Get raw text from Vertex AI / Gemini for partial JSON extraction."""
@@ -545,7 +549,6 @@ def _try_partial_pass1_extraction(raw_text: str | None, segments: list[dict]) ->
 
 def _gate_signals_from_pass1(pass1_result: dict, segments: list[dict]) -> "Pass1GateSignals":
     """Derive Pass1GateSignals from partial pass1 result dict."""
-    hedge_data = pass1_result.get("hedge_data", [])
     dollar = pass1_result.get("contains_dollar_amount", False)
     comp = pass1_result.get("contains_comparison_language", False)
     first_num = pass1_result.get("first_number_speaker")

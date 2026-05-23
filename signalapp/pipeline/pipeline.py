@@ -6,7 +6,6 @@ ARQ enqueues a job → this workflow executes: Pass 1 → Route → Execute Grou
 from __future__ import annotations
 
 from langgraph.graph import StateGraph, END, START
-from typing import Literal
 
 from signalapp.pipeline.state import PipelineState
 

@@ -4,7 +4,6 @@ Prevents cascading failures when a service is degraded.
 """
 from __future__ import annotations
 
-import asyncio
 import time
 from dataclasses import dataclass, field
 from enum import Enum

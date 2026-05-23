@@ -3,17 +3,14 @@ Calls API router — /api/v1/calls
 """
 from __future__ import annotations
 
-import asyncio
 import re
 import uuid
 from datetime import datetime
-from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 
-from signalapp.app.dependencies import CallRepo, TranscriptRepo, CurrentUserID
-from signalapp.db.models import Call
+from signalapp.app.dependencies import CallRepo, CurrentUserID
 
 router = APIRouter()
 
@@ -254,7 +251,6 @@ async def paste_transcript(
     """
     from signalapp.db.repository import get_session
     from signalapp.db.models import Call as CallModel, Transcript as TranscriptModel, TranscriptSegment as SegmentModel
-    from signalapp.jobs.pipeline import run_pipeline_job
 
     org_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
     parsed_date = None

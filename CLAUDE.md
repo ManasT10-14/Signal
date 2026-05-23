@@ -42,16 +42,18 @@ The platform builds 20 signal extraction pipelines that collectively power 236+ 
 
 ```
 /
-├── References/                    # All project documentation
-│   ├── Signal_PRD_v2.2.md        # Complete product specification
-│   ├── Signal_Intelligence_Stack_v1.0.md  # Intelligence layer design
-│   ├── FRAMEWORK_ROUTING_ARCHITECTURE.md   # Framework execution routing
-│   ├── PCP_Summary.md             # Perception × Context × Permission framework
-│   ├── LLM_RELIABILITY_GUIDE.md  # LLM usage patterns and reliability
-│   ├── Gong_Summary.md           # Competitive analysis
-│   └── *.html                     # Rendered versions of some docs
-├── References/.claude/
-│   └── settings.local.json        # Python permissions (pdfplumber, PyPDF2, fitz)
+├── docs/                          # All project documentation
+│   ├── PHASES.md                  # Phase breakdown
+│   ├── PROJECT_STATUS.md          # Current status
+│   └── References/                # Source specs & reference material
+│       ├── Signal_PRD_v2.2.md        # Complete product specification
+│       ├── Signal_Intelligence_Stack_v1.0.md  # Intelligence layer design
+│       ├── FRAMEWORK_ROUTING_ARCHITECTURE.md   # Framework execution routing
+│       ├── PCP_Summary.md             # Perception × Context × Permission framework
+│       ├── LLM_RELIABILITY_GUIDE.md  # LLM usage patterns and reliability
+│       ├── Gong_Summary.md           # Competitive analysis
+│       ├── *.html                     # Rendered versions of some docs
+│       └── .claude/settings.local.json  # Python permissions (pdfplumber, PyPDF2, fitz)
 └── CLAUDE.md                      # This file
 ```
 
@@ -65,7 +67,7 @@ The platform builds 20 signal extraction pipelines that collectively power 236+ 
 
 ## PDF Reference Materials
 
-The `References/` directory contains PDFs that inform the design:
+The `docs/References/` directory contains PDFs that inform the design:
 - `Signal_PRD_v2.2.md` → `pcp_public.pdf` (source reference)
 - `Gong_Summary.md` → `MUST_Gong_Product_Tear...` (competitive teardown)
 - `Signal_DPR_v1_Part_Two.pdf` — earlier decision record

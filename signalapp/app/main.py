@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 
 def _setup_gcp_credentials():
     """Write GCP service account JSON from env var to file (for Railway/Cloud deployments)."""
-    import os, json
+    import os
+    import json
     creds_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
     if creds_json and not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
         creds_path = "/tmp/gcp-service-account.json"

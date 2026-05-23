@@ -5,7 +5,7 @@ Provider-agnostic: swap Gemini for Anthropic/OpenAI by implementing this interfa
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, TypeVar
+from typing import TypeVar
 from pydantic import BaseModel
 
 

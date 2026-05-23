@@ -4,9 +4,8 @@ Insights API router — /api/v1/insights
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from signalapp.app.dependencies import InsightRepo, CallRepo, CurrentUserID
@@ -139,8 +138,7 @@ async def get_dashboard_summary(
     """
     from signalapp.db.repository import get_session
     from signalapp.db.models import Insight, Call
-    from sqlalchemy import select, func, desc
-    from datetime import datetime, timedelta
+    from sqlalchemy import select
 
     try:
         async for session in get_session():
